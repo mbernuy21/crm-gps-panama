@@ -1,0 +1,35 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: #f4f6fb;
+  color: #1a1a2e;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root {
+  --azul: #4F6EF7;
+  --azul-hover: #3d5ce0;
+  --azul-light: #eef1fe;
+  --verde: #22c55e;
+  --rojo: #ef4444;
+  --amarillo: #f59e0b;
+  --naranja: #f97316;
+  --gris: #6b7280;
+  --gris-light: #f4f6fb;
+  --borde: #e5e7eb;
+  --sombra: 0 1px 3px rgba(0,0,0,0.08);
+  --sombra-md: 0 4px 12px rgba(0,0,0,0.1);
+  --radio: 10px;
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #c5c5c5; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #a0a0a0; }
+
+/* Toast personalizado */
+.Toastify__toast { font-family: 'Inter', sans-serif; border-radius: var(--radio) !important; }

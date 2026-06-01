@@ -1,0 +1,191 @@
+-- ============================================================
+-- CRM GPS Tracker Panamá — Schema completo de base de datos
+-- ============================================================
+
+CREATE DATABASE IF NOT EXISTS crm_gps_panama CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE crm_gps_panama;
+
+-- ------------------------------------------------------------
+-- Tabla: usuarios (administradores del CRM)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS usuarios (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(150) NOT NULL,
+  email VARCHAR(150) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  rol ENUM('admin', 'sub_agente') NOT NULL DEFAULT 'admin',
+  activo TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- ------------------------------------------------------------
+-- Tabla: clientes
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS clientes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre_razon_social VARCHAR(200) NOT NULL,
+  tipo_cliente ENUM('natural', 'juridica') NOT NULL DEFAULT 'natural',
+  ruc VARCHAR(50),
+  telefono_principal VARCHAR(20),
+  whatsapp VARCHAR(20),
+  email VARCHAR(150),
+  direccion TEXT,
+  provincia VARCHAR(100),
+  distrito VARCHAR(100),
+  contacto_secundario_nombre VARCHAR(150),
+  contacto_secundario_telefono VARCHAR(20),
+  estado ENUM('activo', 'inactivo', 'moroso', 'suspendido', 'cortado') NOT NULL DEFAULT 'activo',
+  notas_internas TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_estado (estado),
+  INDEX idx_provincia (provincia)
+);
+
+-- ------------------------------------------------------------
+-- Tabla: dispositivos (GPS vinculados a clientes)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS dispositivos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  cliente_id INT,
+  serial_gps VARCHAR(100) NOT NULL,
+  simcard VARCHAR(50),
+  placa_vehiculo VARCHAR(20),
+  modelo_auto VARCHAR(100),
+  tipo_producto ENUM('fijo', 'portatil') NOT NULL DEFAULT 'fijo',
+  modalidad ENUM('venta', 'alquiler') NOT NULL DEFAULT 'alquiler',
+  valor_equipo_usd DECIMAL(10,2) DEFAULT 0.00,
+  estado ENUM('asignado', 'disponible', 'devuelto', 'perdido', 'duplicado') NOT NULL DEFAULT 'disponible',
+  fecha_asignacion DATE,
+  notas TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL,
+  INDEX idx_cliente_id (cliente_id),
+  INDEX idx_estado (estado),
+  INDEX idx_serial (serial_gps)
+);
+
+-- ------------------------------------------------------------
+-- Tabla: historial_dispositivos (reasignaciones entre clientes)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS historial_dispositivos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  dispositivo_id INT NOT NULL,
+  cliente_id INT,
+  accion VARCHAR(100) NOT NULL,
+  fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  notas TEXT,
+  FOREIGN KEY (dispositivo_id) REFERENCES dispositivos(id) ON DELETE CASCADE,
+  FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL
+);
+
+-- ------------------------------------------------------------
+-- Tabla: contratos (un contrato por cliente)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS contratos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  cliente_id INT NOT NULL,
+  frecuencia ENUM('mensual', 'semestral', 'anual') NOT NULL DEFAULT 'mensual',
+  monto_total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  fecha_inicio DATE NOT NULL,
+  fecha_proximo_pago DATE NOT NULL,
+  dias_alerta INT NOT NULL DEFAULT 5,
+  estado ENUM('activo', 'suspendido', 'cancelado') NOT NULL DEFAULT 'activo',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE,
+  INDEX idx_cliente_id (cliente_id),
+  INDEX idx_fecha_proximo_pago (fecha_proximo_pago),
+  INDEX idx_estado (estado)
+);
+
+-- ------------------------------------------------------------
+-- Tabla: pagos
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS pagos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  contrato_id INT NOT NULL,
+  cliente_id INT NOT NULL,
+  fecha_pago DATE NOT NULL,
+  monto DECIMAL(10,2) NOT NULL,
+  metodo ENUM('transferencia', 'yappy', 'efectivo', 'cheque') NOT NULL DEFAULT 'transferencia',
+  link_comprobante VARCHAR(500),
+  registrado_por INT,
+  notas TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (contrato_id) REFERENCES contratos(id) ON DELETE CASCADE,
+  FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE,
+  FOREIGN KEY (registrado_por) REFERENCES usuarios(id) ON DELETE SET NULL,
+  INDEX idx_cliente_id (cliente_id),
+  INDEX idx_fecha_pago (fecha_pago)
+);
+
+-- ------------------------------------------------------------
+-- Tabla: facturas
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS facturas (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  cliente_id INT NOT NULL,
+  numero_factura VARCHAR(20) NOT NULL UNIQUE,
+  fecha_emision DATE NOT NULL,
+  items_json JSON NOT NULL,
+  subtotal DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  estado ENUM('borrador', 'enviada', 'pagada', 'anulada') NOT NULL DEFAULT 'borrador',
+  xml_dgi TEXT DEFAULT NULL COMMENT 'Reservado para integración futura con DGI Panamá',
+  pdf_url VARCHAR(500),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE,
+  INDEX idx_cliente_id (cliente_id),
+  INDEX idx_numero_factura (numero_factura)
+);
+
+-- ------------------------------------------------------------
+-- Tabla: leads (prospectos)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS leads (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(150) NOT NULL,
+  telefono VARCHAR(20),
+  whatsapp VARCHAR(20),
+  email VARCHAR(150),
+  tipo_gps_consultado VARCHAR(100),
+  provincia VARCHAR(100),
+  fecha_contacto DATE NOT NULL,
+  atendido_por INT,
+  estado ENUM('nuevo', 'contactado', 'interesado', 'cerrado', 'perdido') NOT NULL DEFAULT 'nuevo',
+  notas TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (atendido_por) REFERENCES usuarios(id) ON DELETE SET NULL,
+  INDEX idx_estado (estado),
+  INDEX idx_fecha_contacto (fecha_contacto)
+);
+
+-- ------------------------------------------------------------
+-- Tabla: plantillas_whatsapp
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS plantillas_whatsapp (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL,
+  tipo ENUM('recordatorio', 'mora', 'suspension', 'reactivacion') NOT NULL,
+  contenido TEXT NOT NULL,
+  variables_json JSON,
+  activa TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- ------------------------------------------------------------
+-- Tabla: configuracion (parámetros del sistema)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS configuracion (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  clave VARCHAR(100) NOT NULL UNIQUE,
+  valor VARCHAR(500) NOT NULL,
+  descripcion VARCHAR(255),
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);

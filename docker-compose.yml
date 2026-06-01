@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # Base de datos MySQL (solo para desarrollo local)
+  db:
+    image: mysql:8.0
+    container_name: crm_gps_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: crm_gps_panama
+      MYSQL_USER: crm_user
+      MYSQL_PASSWORD: crm_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/src/config/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./backend/src/config/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    networks:
+      - crm_network
+
+  # Backend API
+  backend:
+    build: ./backend
+    container_name: crm_gps_backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_USER: crm_user
+      DB_PASSWORD: crm_password
+      DB_NAME: crm_gps_panama
+      DB_PORT: 3306
+      JWT_SECRET: dev_jwt_secret_change_in_production
+      JWT_EXPIRES_IN: 8h
+      PORT: 3001
+      NODE_ENV: development
+      FRONTEND_URL: http://localhost:3000
+    ports:
+      - "3001:3001"
+    depends_on:
+      - db
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - crm_network
+
+  # Frontend React
+  frontend:
+    build: ./frontend
+    container_name: crm_gps_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - REACT_APP_API_URL=http://localhost:3001
+    networks:
+      - crm_network
+
+volumes:
+  mysql_data:
+
+networks:
+  crm_network:
+    driver: bridge
