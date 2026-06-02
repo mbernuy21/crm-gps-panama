@@ -11,19 +11,29 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  timezone: '-05:00', // Zona horaria Panamá (UTC-5, sin cambio de horario)
+  connectTimeout: 30000,      // 30 segundos de timeout
+  timezone: '-05:00',          // Zona horaria Panamá (UTC-5, sin cambio de horario)
   charset: 'utf8mb4'
 });
 
-// Verificar conexión al iniciar
-async function verificarConexion() {
-  try {
-    const conn = await pool.getConnection();
-    console.log('✅ Conexión a MySQL establecida');
-    conn.release();
-  } catch (err) {
-    console.error('❌ Error conectando a MySQL:', err.message);
-    process.exit(1);
+// Verificar conexión al iniciar con reintentos automáticos
+async function verificarConexion(intentos = 10, espera = 5000) {
+  for (let i = 1; i <= intentos; i++) {
+    try {
+      const conn = await pool.getConnection();
+      console.log('✅ Conexión a MySQL establecida');
+      conn.release();
+      return;
+    } catch (err) {
+      console.error(`❌ Intento ${i}/${intentos} — Error: ${err.message}`);
+      if (i < intentos) {
+        console.log(`⏳ Reintentando en ${espera / 1000}s...`);
+        await new Promise(r => setTimeout(r, espera));
+      } else {
+        console.error('🚫 No se pudo conectar a MySQL. Abortando.');
+        process.exit(1);
+      }
+    }
   }
 }
 
