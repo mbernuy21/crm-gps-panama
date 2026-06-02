@@ -1,0 +1,16 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Instalar solo dependencias de producción
+COPY package*.json ./
+RUN npm install --production
+
+COPY . .
+
+# Crear directorio para logs
+RUN mkdir -p logs
+
+EXPOSE 3001
+
+CMD ["node", "src/app.js"]

@@ -1,0 +1,81 @@
+version: '3.8'
+
+# CRM GPS Tracker Panamá — Producción en VPS Oracle
+# Puertos: Frontend 3100, Backend 3101 (sin colisión con SinoTrack)
+
+services:
+  # Base de datos MySQL propia del CRM
+  db:
+    image: mysql:8.0
+    container_name: crm_panama_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - crm_mysql_data:/var/lib/mysql
+      - ./backend/src/config/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - crm_panama_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API REST
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: crm_panama_backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_PORT: 3306
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: 8h
+      PORT: 3001
+      NODE_ENV: production
+      FRONTEND_URL: ${FRONTEND_URL}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      EMAIL_FROM: ${EMAIL_FROM}
+    ports:
+      - "3101:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - crm_panama_network
+
+  # Frontend React (build estático servido con nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        REACT_APP_API_URL: ${REACT_APP_API_URL}
+    container_name: crm_panama_frontend
+    restart: unless-stopped
+    ports:
+      - "3100:80"
+    depends_on:
+      - backend
+    networks:
+      - crm_panama_network
+
+volumes:
+  crm_mysql_data:
+    driver: local
+
+networks:
+  crm_panama_network:
+    driver: bridge
