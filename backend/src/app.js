@@ -6,9 +6,13 @@ require('dotenv').config();
 
 const app = express();
 
-// Middleware
+// Middleware — CORS: acepta el frontend configurado o cualquier origen en Railway
+const allowedOrigins = process.env.FRONTEND_URL
+  ? [process.env.FRONTEND_URL, 'http://localhost:3000', 'http://localhost:3100']
+  : true; // true = cualquier origen (Railway development)
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: allowedOrigins,
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
