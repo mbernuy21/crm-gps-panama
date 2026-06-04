@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
-const auth = require('../middleware/auth');
+const { authMiddleware: auth } = require('../middleware/auth');
 const https = require('https');
 const http = require('http');
 

@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
-const auth = require('../middleware/auth');
+const { authMiddleware: auth } = require('../middleware/auth');
 const XLSX = require('xlsx');
 const nodemailer = require('nodemailer');
 const cron = require('node-cron');

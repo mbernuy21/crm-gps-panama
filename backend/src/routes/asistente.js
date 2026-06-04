@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const db = require('../config/database');
-const auth = require('../middleware/auth');
+const { authMiddleware: auth } = require('../middleware/auth');
 
 // POST /api/asistente/chat — enviar mensaje al asistente
 router.post('/chat', auth, async (req, res) => {

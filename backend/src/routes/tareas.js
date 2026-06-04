@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
-const auth = require('../middleware/auth');
+const { authMiddleware: auth } = require('../middleware/auth');
 const nodemailer = require('nodemailer');
 
 // Transporter de email para alertas
