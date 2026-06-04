@@ -16,6 +16,8 @@ import Leads from './pages/Leads';
 import Inventario from './pages/Inventario';
 import Alertas from './pages/Alertas';
 import Plantillas from './pages/Plantillas';
+import Cotizaciones from './pages/Cotizaciones';
+import CotizacionForm from './pages/CotizacionForm';
 
 // Ruta protegida — redirige al login si no hay token
 function RutaProtegida({ children }) {
@@ -49,6 +51,9 @@ export default function App() {
           <Route path="inventario" element={<Inventario />} />
           <Route path="alertas" element={<Alertas />} />
           <Route path="plantillas" element={<Plantillas />} />
+          <Route path="cotizaciones" element={<Cotizaciones />} />
+          <Route path="cotizaciones/nueva" element={<CotizacionForm />} />
+          <Route path="cotizaciones/:id/editar" element={<CotizacionForm />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

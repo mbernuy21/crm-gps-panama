@@ -109,6 +109,24 @@ async function seed() {
     `);
     console.log('✅ Leads de prueba insertados');
 
+    // Catálogo de productos GPS Tracker Panamá
+    await conn.query(`
+      INSERT IGNORE INTO catalogo_productos (id, nombre, descripcion, precio) VALUES
+      (1, 'Venta e Instalación de GPS', 'Localizadores de GPS para todo tipo de vehículo incluye:\n* Equipo de localización\n* Incluye instalación\n* Garantía de 3 años.', 65.00),
+      (2, 'Alquiler e Instalación de GPS', 'Alquiler de Equipo GPS para todo tipo de vehículo incluye:\n* Equipo de localización GPS\n* Instalación', 25.00),
+      (3, 'Plataforma Web + App + SIM Card (mensual)', 'Plataforma Web, App y Sim Card con data roaming Internacional.\nMensualidad B/.14.00 | Precio Promocional B/.12.00\nDescuento por Pago Oportuno o Pronto Pago (pago antes de 5 días del corte).\nAnualidad B/.120.00 — 2 meses gratis por unidad.\nReportes guardados por 1 año.', 14.00),
+      (4, 'Mensualidad Alquiler GPS + SIM Card', 'Plataforma Virtual Web, APP, Sim Card con data roaming Internacional y Alquiler del equipo GPS.\nPrecio Regular B/.18.00 | Precio Promocional B/.16.00\nDescuento por Pago Oportuno (pago antes de 5 días del corte).\nReportes guardados por 1 año.', 18.00),
+      (5, 'Anualidad del Servicio GPS', 'Pago anual por Plataforma Web y Aplicación + Simcard con data y roaming Internacional.\n2 meses de servicio GRATIS por cada unidad. Reportes guardados por 1 año.', 120.00),
+      (6, 'Anualidad de Alquiler de GPS', 'Pago anual por concepto de Conectividad data (Simcard) + Plataforma Web + App + Alquiler del equipo GPS.', 150.00),
+      (7, 'Anualidad de servicio GPS (2 meses gratis)', 'Anualidad de Servicio GPS con 2 meses de servicio gratis incluidos.', 144.00),
+      (8, 'GPS Portátil', 'Equipo GPS portátil para vehículos, incluye instalación y configuración.', 105.00),
+      (9, 'Instalación a domicilio', 'Servicio de instalación de GPS a domicilio en área metropolitana.', 8.00),
+      (10, 'Viático de transporte', 'Viático de transporte para instalación fuera de la ciudad de Panamá.', 40.00),
+      (11, 'Reposición de SIM Card', 'Colocación de SIM Card nuevo por duplicado o pérdida del original.', 0.00),
+      (12, 'Depósito de Garantía', 'Depósito de Garantía reembolsable al momento de devolver el equipo GPS.', 80.00)
+    `);
+    console.log('✅ Catálogo de productos insertado');
+
     console.log('\n🎉 Seed completado exitosamente');
     console.log('Usuario de prueba: admin@gpstrackerpanama.com / Admin2024!');
 

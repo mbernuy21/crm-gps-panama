@@ -35,6 +35,8 @@ app.use('/api/plantillas', require('./routes/plantillas'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/configuracion', require('./routes/configuracion'));
 app.use('/api/exportar', require('./routes/exportar'));
+app.use('/api/cotizaciones', require('./routes/cotizaciones'));
+app.use('/api/catalogo', require('./routes/catalogo'));
 
 // Health check
 app.get('/api/health', (req, res) => {

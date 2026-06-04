@@ -189,3 +189,45 @@ CREATE TABLE IF NOT EXISTS configuracion (
   descripcion VARCHAR(255),
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+-- ------------------------------------------------------------
+-- Tabla: catalogo_productos (artículos para cotizaciones)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS catalogo_productos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(200) NOT NULL,
+  descripcion TEXT,
+  precio DECIMAL(10,2) NOT NULL DEFAULT 0,
+  activo TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- ------------------------------------------------------------
+-- Tabla: cotizaciones
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS cotizaciones (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  numero INT NOT NULL,
+  cliente_id INT NULL,
+  lead_id INT NULL,
+  nombre_cliente VARCHAR(200) NOT NULL,
+  email_cliente VARCHAR(200),
+  telefono_cliente VARCHAR(30),
+  whatsapp_cliente VARCHAR(30),
+  items_json JSON NOT NULL,
+  subtotal DECIMAL(10,2) NOT NULL DEFAULT 0,
+  descuento_global DECIMAL(10,2) NOT NULL DEFAULT 0,
+  total DECIMAL(10,2) NOT NULL DEFAULT 0,
+  notas TEXT,
+  fecha_vencimiento DATE,
+  estado ENUM('borrador','enviada','vista','aceptada','rechazada') NOT NULL DEFAULT 'borrador',
+  creado_por INT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL,
+  FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL,
+  FOREIGN KEY (creado_por) REFERENCES usuarios(id) ON DELETE SET NULL,
+  INDEX idx_estado (estado),
+  INDEX idx_numero (numero)
+);

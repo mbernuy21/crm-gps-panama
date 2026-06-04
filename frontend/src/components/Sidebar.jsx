@@ -9,6 +9,7 @@ const menu = [
   { path: '/pagos',       label: 'Pagos',           icono: '💳' },
   { path: '/facturas',    label: 'Facturas',        icono: '🧾' },
   { path: '/leads',       label: 'Leads',           icono: '🎯' },
+  { path: '/cotizaciones',label: 'Cotizaciones',    icono: '📝' },
   { path: '/inventario',  label: 'Inventario',      icono: '📦' },
   { path: '/alertas',     label: 'Alertas',         icono: '🔔' },
   { path: '/plantillas',  label: 'Plantillas WA',   icono: '💬' },
