@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import api from '../services/api';
 import AlertaBadge from '../components/AlertaBadge';
 import ExportButton from '../components/ExportButton';
+import ModalConfirmar from '../components/ModalConfirmar';
 
 const ESTADOS_GPS = ['disponible', 'asignado', 'devuelto', 'perdido', 'duplicado'];
 
@@ -114,13 +115,29 @@ export default function Dispositivos() {
   const [clientes, setClientes] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [modal, setModal] = useState(null);
-  const [filtros, setFiltros] = useState({ estado: '', buscar: '' });
+  const [confirmar, setConfirmar] = useState({ visible: false, id: null });
+  const [filtros, setFiltros] = useState({ estado: '', buscar: '', combo: '' });
+
+  // Filtro combinado tipo+modalidad
+  const COMBOS = [
+    { value: '', label: 'Todos los GPS' },
+    { value: 'fijo|alquiler', label: 'GPS Fijo en Alquiler' },
+    { value: 'fijo|venta', label: 'GPS Fijo en Venta' },
+    { value: 'portatil|', label: 'GPS Portátil (todos)' },
+    { value: 'portatil|alquiler', label: 'GPS Portátil en Alquiler' },
+    { value: 'portatil|venta', label: 'GPS Portátil en Venta' },
+  ];
 
   function cargar() {
     setCargando(true);
     const params = new URLSearchParams();
     if (filtros.estado) params.append('estado', filtros.estado);
     if (filtros.buscar) params.append('buscar', filtros.buscar);
+    if (filtros.combo) {
+      const [tipo, modalidad] = filtros.combo.split('|');
+      if (tipo) params.append('tipo_producto', tipo);
+      if (modalidad) params.append('modalidad', modalidad);
+    }
     Promise.all([
       api.get(`/dispositivos?${params}`),
       api.get('/clientes?limit=500')
@@ -131,14 +148,14 @@ export default function Dispositivos() {
     }).catch(() => setCargando(false));
   }
 
-  useEffect(() => { cargar(); }, [filtros.estado]);
+  useEffect(() => { cargar(); }, [filtros.estado, filtros.combo]);
   useEffect(() => { const t = setTimeout(cargar, 350); return () => clearTimeout(t); }, [filtros.buscar]);
 
-  async function eliminar(id) {
-    if (!window.confirm('¿Eliminar este dispositivo?')) return;
+  async function eliminar() {
     try {
-      await api.delete(`/dispositivos/${id}`);
+      await api.delete(`/dispositivos/${confirmar.id}`);
       toast.success('Dispositivo eliminado');
+      setConfirmar({ visible: false, id: null });
       cargar();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Error eliminando dispositivo');
@@ -158,10 +175,14 @@ export default function Dispositivos() {
         </div>
       </div>
 
-      <div style={{ background: 'white', borderRadius: 'var(--radio)', padding: '14px 16px', marginBottom: '16px', boxShadow: 'var(--sombra)', display: 'flex', gap: '12px' }}>
+      <div style={{ background: 'white', borderRadius: 'var(--radio)', padding: '14px 16px', marginBottom: '16px', boxShadow: 'var(--sombra)', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
         <input placeholder="Buscar por serial, SIM, placa, cliente..."
           value={filtros.buscar} onChange={e => setFiltros({ ...filtros, buscar: e.target.value })}
-          style={{ flex: 1, padding: '8px 12px', border: '1px solid var(--borde)', borderRadius: '8px', fontSize: '13px' }} />
+          style={{ flex: 1, minWidth: '180px', padding: '8px 12px', border: '1px solid var(--borde)', borderRadius: '8px', fontSize: '13px' }} />
+        <select value={filtros.combo} onChange={e => setFiltros({ ...filtros, combo: e.target.value })}
+          style={{ padding: '8px 12px', border: '1px solid var(--borde)', borderRadius: '8px', fontSize: '13px' }}>
+          {COMBOS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+        </select>
         <select value={filtros.estado} onChange={e => setFiltros({ ...filtros, estado: e.target.value })}
           style={{ padding: '8px 12px', border: '1px solid var(--borde)', borderRadius: '8px', fontSize: '13px' }}>
           <option value="">Todos los estados</option>
@@ -202,7 +223,7 @@ export default function Dispositivos() {
                       style={{ padding: '4px 10px', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
                       Editar
                     </button>
-                    <button onClick={() => eliminar(d.id)}
+                    <button onClick={() => setConfirmar({ visible: true, id: d.id })}
                       style={{ padding: '4px 8px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
                       ×
                     </button>
@@ -216,6 +237,14 @@ export default function Dispositivos() {
           {dispositivos.length} dispositivo(s)
         </div>
       </div>
+
+      <ModalConfirmar
+        visible={confirmar.visible}
+        titulo="¿Eliminar dispositivo GPS?"
+        mensaje="Este dispositivo será eliminado permanentemente del sistema."
+        onConfirmar={eliminar}
+        onCancelar={() => setConfirmar({ visible: false, id: null })}
+      />
 
       {modal !== null && (
         <ModalDispositivo

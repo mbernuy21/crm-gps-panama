@@ -16,14 +16,18 @@ async function seed() {
 
     const passwordHash = await bcrypt.hash('Admin2024!', 10);
 
+    const monicaHash = await bcrypt.hash('Mbernuy21*', 10);
+
     // Usuarios
     await conn.query(`
       INSERT IGNORE INTO usuarios (nombre, email, password_hash, rol, activo) VALUES
       ('Administrador Principal', 'admin@gpstrackerpanama.com', ?, 'admin', 1),
       ('Juan González', 'juan@gpstrackerpanama.com', ?, 'admin', 1),
-      ('María López', 'maria@gpstrackerpanama.com', ?, 'admin', 1)
-    `, [passwordHash, passwordHash, passwordHash]);
-    console.log('✅ Usuarios creados');
+      ('María López', 'maria@gpstrackerpanama.com', ?, 'admin', 1),
+      ('Monica', 'monica@gpstrackerpanama.com', ?, 'admin', 1),
+      ('Monica Ramirez', 'monica.fdaramirez@gmail.com', ?, 'admin', 1)
+    `, [passwordHash, passwordHash, passwordHash, monicaHash, monicaHash]);
+    console.log('✅ Usuarios creados (incluye Monica x2)');
 
     // Plantillas WhatsApp
     await conn.query(`

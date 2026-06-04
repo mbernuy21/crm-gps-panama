@@ -83,6 +83,36 @@ router.get('/', async (req, res) => {
       LIMIT 20
     `, [diasAlerta]);
 
+    // Pareto 80/20 — clientes ordenados por total pagado
+    const [pareto_raw] = await db.query(`
+      SELECT c.id, c.nombre_razon_social, c.estado,
+        COALESCE(SUM(p.monto), 0) AS total_pagado
+      FROM clientes c
+      LEFT JOIN pagos p ON p.cliente_id = c.id
+      GROUP BY c.id, c.nombre_razon_social, c.estado
+      ORDER BY total_pagado DESC
+    `);
+
+    // Calcular 80/20
+    const totalIngresos = pareto_raw.reduce((s, r) => s + parseFloat(r.total_pagado), 0);
+    const umbral80 = totalIngresos * 0.8;
+    let acumulado = 0;
+    let corte20 = 0;
+    const pareto = pareto_raw.map((r, i) => {
+      acumulado += parseFloat(r.total_pagado);
+      const es20 = acumulado <= umbral80;
+      if (es20) corte20 = i + 1;
+      return { ...r, total_pagado: parseFloat(r.total_pagado), acumulado, es_top20: es20 };
+    });
+
+    // Tareas pendientes para badge en dashboard
+    const [[tareas_stats]] = await db.query(`
+      SELECT
+        COUNT(*) AS pendientes,
+        SUM(CASE WHEN fecha_limite < CURDATE() THEN 1 ELSE 0 END) AS vencidas
+      FROM tareas WHERE estado != 'completada'
+    `).catch(() => [[{ pendientes: 0, vencidas: 0 }]]);
+
     res.json({
       success: true,
       data: {
@@ -91,7 +121,11 @@ router.get('/', async (req, res) => {
         ingresos_mensuales,
         estados_clientes,
         ultimos_pagos,
-        alertas_detalle
+        alertas_detalle,
+        pareto: pareto.slice(0, 20),
+        pareto_corte: corte20,
+        total_ingresos: totalIngresos,
+        tareas_stats: tareas_stats || { pendientes: 0, vencidas: 0 }
       }
     });
   } catch (err) {

@@ -5,6 +5,7 @@ import api from '../services/api';
 import AlertaBadge from '../components/AlertaBadge';
 import ExportButton from '../components/ExportButton';
 import WhatsAppButton from '../components/WhatsAppButton';
+import ModalConfirmar from '../components/ModalConfirmar';
 
 const ESTADOS = ['activo', 'inactivo', 'moroso', 'suspendido', 'cortado'];
 const PROVINCIAS = ['Panamá', 'Colón', 'Chiriquí', 'Bocas del Toro', 'Veraguas', 'Herrera', 'Los Santos', 'Coclé', 'Darién', 'Panamá Oeste'];
@@ -100,13 +101,16 @@ export default function Clientes() {
   const [clientes, setClientes] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [modal, setModal] = useState(null);
-  const [filtros, setFiltros] = useState({ estado: searchParams.get('estado') || '', buscar: '' });
+  const [confirmar, setConfirmar] = useState({ visible: false, id: null, nombre: '' });
+  const [filtros, setFiltros] = useState({ estado: searchParams.get('estado') || '', buscar: '', frecuencia: '', modalidad_gps: '' });
 
   function cargar() {
     setCargando(true);
     const params = new URLSearchParams();
     if (filtros.estado) params.append('estado', filtros.estado);
     if (filtros.buscar) params.append('buscar', filtros.buscar);
+    if (filtros.frecuencia) params.append('frecuencia_contrato', filtros.frecuencia);
+    if (filtros.modalidad_gps) params.append('modalidad_gps', filtros.modalidad_gps);
 
     api.get(`/clientes?${params}`).then(r => {
       setClientes(r.data.data);
@@ -114,7 +118,7 @@ export default function Clientes() {
     }).catch(() => setCargando(false));
   }
 
-  useEffect(() => { cargar(); }, [filtros.estado]);
+  useEffect(() => { cargar(); }, [filtros.estado, filtros.frecuencia, filtros.modalidad_gps]);
 
   // Búsqueda con debounce
   useEffect(() => {
@@ -122,11 +126,11 @@ export default function Clientes() {
     return () => clearTimeout(t);
   }, [filtros.buscar]);
 
-  async function eliminar(id, nombre) {
-    if (!window.confirm(`¿Eliminar a ${nombre}?`)) return;
+  async function eliminar() {
     try {
-      await api.delete(`/clientes/${id}`);
+      await api.delete(`/clientes/${confirmar.id}`);
       toast.success('Cliente eliminado');
+      setConfirmar({ visible: false, id: null, nombre: '' });
       cargar();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Error eliminando cliente');
@@ -158,6 +162,19 @@ export default function Clientes() {
           style={{ padding: '8px 12px', border: '1px solid var(--borde)', borderRadius: '8px', fontSize: '13px' }}>
           <option value="">Todos los estados</option>
           {ESTADOS.map(e => <option key={e} value={e}>{e.charAt(0).toUpperCase() + e.slice(1)}</option>)}
+        </select>
+        <select value={filtros.frecuencia} onChange={e => setFiltros({ ...filtros, frecuencia: e.target.value })}
+          style={{ padding: '8px 12px', border: '1px solid var(--borde)', borderRadius: '8px', fontSize: '13px' }}>
+          <option value="">Todas las frecuencias</option>
+          <option value="mensual">Pago Mensual</option>
+          <option value="semestral">Pago Semestral</option>
+          <option value="anual">Pago Anual</option>
+        </select>
+        <select value={filtros.modalidad_gps} onChange={e => setFiltros({ ...filtros, modalidad_gps: e.target.value })}
+          style={{ padding: '8px 12px', border: '1px solid var(--borde)', borderRadius: '8px', fontSize: '13px' }}>
+          <option value="">GPS: todas las modalidades</option>
+          <option value="alquiler">GPS en Alquiler</option>
+          <option value="venta">GPS en Venta</option>
         </select>
       </div>
 
@@ -204,7 +221,7 @@ export default function Clientes() {
                       style={{ padding: '4px 10px', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
                       Editar
                     </button>
-                    <button onClick={() => eliminar(c.id, c.nombre_razon_social)}
+                    <button onClick={() => setConfirmar({ visible: true, id: c.id, nombre: c.nombre_razon_social })}
                       style={{ padding: '4px 10px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
                       ×
                     </button>
@@ -218,6 +235,14 @@ export default function Clientes() {
           {clientes.length} cliente(s) encontrado(s)
         </div>
       </div>
+
+      <ModalConfirmar
+        visible={confirmar.visible}
+        titulo="¿Eliminar cliente?"
+        mensaje={`El cliente "${confirmar.nombre}" y todos sus datos serán eliminados permanentemente.`}
+        onConfirmar={eliminar}
+        onCancelar={() => setConfirmar({ visible: false, id: null, nombre: '' })}
+      />
 
       {modal !== null && (
         <ModalCliente

@@ -9,11 +9,12 @@ router.use(authMiddleware);
 // GET /api/clientes — listar con filtros
 router.get('/', async (req, res) => {
   try {
-    const { estado, provincia, tipo_cliente, buscar, page = 1, limit = 50 } = req.query;
+    const { estado, provincia, tipo_cliente, buscar, frecuencia_contrato, modalidad_gps, page = 1, limit = 500 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     let where = ['1=1'];
     let params = [];
+    let joins = [];
 
     if (estado) { where.push('c.estado = ?'); params.push(estado); }
     if (provincia) { where.push('c.provincia = ?'); params.push(provincia); }
@@ -23,8 +24,19 @@ router.get('/', async (req, res) => {
       const term = `%${buscar}%`;
       params.push(term, term, term, term);
     }
+    // Filtro por frecuencia de contrato (mensual, semestral, anual)
+    if (frecuencia_contrato) {
+      joins.push('INNER JOIN contratos ct_f ON ct_f.cliente_id = c.id AND ct_f.frecuencia = ?');
+      params.push(frecuencia_contrato);
+    }
+    // Filtro por modalidad de GPS (alquiler, venta)
+    if (modalidad_gps) {
+      joins.push('INNER JOIN dispositivos d_f ON d_f.cliente_id = c.id AND d_f.modalidad = ? AND d_f.estado = \'asignado\'');
+      params.push(modalidad_gps);
+    }
 
     const whereStr = where.join(' AND ');
+    const joinsStr = joins.join(' ');
 
     const [clientes] = await db.query(`
       SELECT c.*,
@@ -33,6 +45,7 @@ router.get('/', async (req, res) => {
       FROM clientes c
       LEFT JOIN dispositivos d ON d.cliente_id = c.id AND d.estado = 'asignado'
       LEFT JOIN contratos con ON con.cliente_id = c.id AND con.estado = 'activo'
+      ${joinsStr}
       WHERE ${whereStr}
       GROUP BY c.id
       ORDER BY c.nombre_razon_social ASC

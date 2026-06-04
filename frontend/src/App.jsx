@@ -18,6 +18,8 @@ import Alertas from './pages/Alertas';
 import Plantillas from './pages/Plantillas';
 import Cotizaciones from './pages/Cotizaciones';
 import CotizacionForm from './pages/CotizacionForm';
+import Tareas from './pages/Tareas';
+import AsistenteIA from './pages/AsistenteIA';
 
 // Ruta protegida — redirige al login si no hay token
 function RutaProtegida({ children }) {
@@ -54,6 +56,8 @@ export default function App() {
           <Route path="cotizaciones" element={<Cotizaciones />} />
           <Route path="cotizaciones/nueva" element={<CotizacionForm />} />
           <Route path="cotizaciones/:id/editar" element={<CotizacionForm />} />
+          <Route path="tareas" element={<Tareas />} />
+          <Route path="asistente" element={<AsistenteIA />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

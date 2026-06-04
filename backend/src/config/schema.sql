@@ -231,3 +231,29 @@ CREATE TABLE IF NOT EXISTS cotizaciones (
   INDEX idx_estado (estado),
   INDEX idx_numero (numero)
 );
+
+-- ------------------------------------------------------------
+-- Tabla: tareas (pendientes del equipo, con o sin cliente)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS tareas (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  titulo VARCHAR(300) NOT NULL,
+  descripcion TEXT,
+  cliente_id INT NULL,
+  creada_por INT NULL,
+  fecha_limite DATE,
+  prioridad ENUM('baja', 'media', 'alta') NOT NULL DEFAULT 'media',
+  estado ENUM('pendiente', 'en_progreso', 'completada') NOT NULL DEFAULT 'pendiente',
+  alerta_enviada TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL,
+  FOREIGN KEY (creada_por) REFERENCES usuarios(id) ON DELETE SET NULL,
+  INDEX idx_estado (estado),
+  INDEX idx_fecha_limite (fecha_limite)
+);
+
+-- Columnas de recuperación de contraseña en usuarios (si no existen)
+ALTER TABLE usuarios
+  ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255) NULL,
+  ADD COLUMN IF NOT EXISTS reset_token_expiry DATETIME NULL;
