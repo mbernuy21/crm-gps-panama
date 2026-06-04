@@ -78,17 +78,31 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, message: 'El serial GPS es requerido' });
     }
 
-    // Verificar serial único
+    // Verificar serial GPS único
     const [[existe]] = await db.query('SELECT id FROM dispositivos WHERE serial_gps = ?', [serial_gps]);
     if (existe) {
       return res.status(400).json({ success: false, message: 'Ya existe un dispositivo con ese serial GPS' });
+    }
+
+    // Verificar SIM card única (si se proporcionó)
+    const simLimpia = simcard && simcard.trim() !== '' ? simcard.trim() : null;
+    if (simLimpia) {
+      const [[simExiste]] = await db.query(
+        'SELECT id, serial_gps FROM dispositivos WHERE simcard = ?', [simLimpia]
+      );
+      if (simExiste) {
+        return res.status(400).json({
+          success: false,
+          message: `⚠️ La SIM Card ${simLimpia} ya está registrada en el GPS ${simExiste.serial_gps}. Primero retírala de ese equipo antes de asignarla a uno nuevo.`
+        });
+      }
     }
 
     const [result] = await db.query(
       `INSERT INTO dispositivos (cliente_id, serial_gps, simcard, placa_vehiculo, modelo_auto,
         tipo_producto, modalidad, valor_equipo_usd, estado, fecha_asignacion, notas)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [cliente_id || null, serial_gps, simcard, placa_vehiculo, modelo_auto,
+      [cliente_id || null, serial_gps, simLimpia, placa_vehiculo, modelo_auto,
        tipo_producto || 'fijo', modalidad || 'alquiler', valor_equipo_usd || 0,
        estado || 'disponible', fecha_asignacion || null, notas]
     );
@@ -121,12 +135,26 @@ router.put('/:id', async (req, res) => {
     const [[actual]] = await db.query('SELECT * FROM dispositivos WHERE id = ?', [id]);
     if (!actual) return res.status(404).json({ success: false, message: 'Dispositivo no encontrado' });
 
+    // Verificar SIM card única al actualizar (excluye el propio dispositivo)
+    const simLimpia = simcard && simcard.trim() !== '' ? simcard.trim() : null;
+    if (simLimpia) {
+      const [[simExiste]] = await db.query(
+        'SELECT id, serial_gps FROM dispositivos WHERE simcard = ? AND id != ?', [simLimpia, id]
+      );
+      if (simExiste) {
+        return res.status(400).json({
+          success: false,
+          message: `⚠️ La SIM Card ${simLimpia} ya está registrada en el GPS ${simExiste.serial_gps}. Primero retírala de ese equipo (déjalo en blanco) antes de asignarla aquí.`
+        });
+      }
+    }
+
     await db.query(
       `UPDATE dispositivos SET cliente_id=?, serial_gps=?, simcard=?, placa_vehiculo=?,
         modelo_auto=?, tipo_producto=?, modalidad=?, valor_equipo_usd=?,
         estado=?, fecha_asignacion=?, notas=?
        WHERE id=?`,
-      [cliente_id || null, serial_gps, simcard, placa_vehiculo, modelo_auto,
+      [cliente_id || null, serial_gps, simLimpia, placa_vehiculo, modelo_auto,
        tipo_producto, modalidad, valor_equipo_usd, estado, fecha_asignacion || null, notas, id]
     );
 

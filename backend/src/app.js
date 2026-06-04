@@ -40,6 +40,7 @@ app.use('/api/catalogo', require('./routes/catalogo'));
 app.use('/api/tareas', require('./routes/tareas'));
 app.use('/api/asistente', require('./routes/asistente'));
 app.use('/api/reportes', require('./routes/reportes'));
+app.use('/api/importar', require('./routes/importar'));
 
 // Health check
 app.get('/api/health', (req, res) => {

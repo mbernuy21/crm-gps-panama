@@ -6,6 +6,7 @@ import AlertaBadge from '../components/AlertaBadge';
 import ExportButton from '../components/ExportButton';
 import WhatsAppButton from '../components/WhatsAppButton';
 import ModalConfirmar from '../components/ModalConfirmar';
+import ImportarGoogleSheets from '../components/ImportarGoogleSheets';
 
 const ESTADOS = ['activo', 'inactivo', 'moroso', 'suspendido', 'cortado'];
 const PROVINCIAS = ['Panamá', 'Colón', 'Chiriquí', 'Bocas del Toro', 'Veraguas', 'Herrera', 'Los Santos', 'Coclé', 'Darién', 'Panamá Oeste'];
@@ -102,6 +103,7 @@ export default function Clientes() {
   const [cargando, setCargando] = useState(true);
   const [modal, setModal] = useState(null);
   const [confirmar, setConfirmar] = useState({ visible: false, id: null, nombre: '' });
+  const [importarModal, setImportarModal] = useState(false);
   const [filtros, setFiltros] = useState({ estado: searchParams.get('estado') || '', buscar: '', frecuencia: '', modalidad_gps: '' });
 
   function cargar() {
@@ -143,6 +145,10 @@ export default function Clientes() {
         <h1 style={{ fontSize: '22px', fontWeight: 700 }}>Clientes</h1>
         <div style={{ display: 'flex', gap: '10px' }}>
           <ExportButton modulo="clientes" filtros={{ estado: filtros.estado }} />
+          <button onClick={() => setImportarModal(true)}
+            style={{ padding: '8px 14px', background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
+            📊 Importar Sheets
+          </button>
           <button onClick={() => setModal({})}
             style={{ padding: '8px 18px', background: 'var(--azul)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
             + Nuevo cliente
@@ -235,6 +241,14 @@ export default function Clientes() {
           {clientes.length} cliente(s) encontrado(s)
         </div>
       </div>
+
+      {importarModal && (
+        <ImportarGoogleSheets
+          tipo="clientes"
+          onImportado={() => { cargar(); }}
+          onCerrar={() => setImportarModal(false)}
+        />
+      )}
 
       <ModalConfirmar
         visible={confirmar.visible}
