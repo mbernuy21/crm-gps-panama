@@ -1,20 +1,37 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 
+// Menú ordenado por jerarquía de uso diario
+// sep: true = separador visual con etiqueta de grupo
 const menu = [
+  // ── OPERACIÓN DIARIA ──────────────────────────────
+  { sep: 'Operación diaria' },
   { path: '/dashboard',    label: 'Dashboard',       icono: '📊' },
-  { path: '/clientes',     label: 'Clientes',         icono: '👥' },
-  { path: '/dispositivos', label: 'Dispositivos GPS', icono: '📡' },
-  { path: '/contratos',    label: 'Contratos',        icono: '📋' },
+  { path: '/alertas',      label: 'Alertas',          icono: '🔔' },
   { path: '/pagos',        label: 'Pagos',            icono: '💳' },
+  { path: '/tareas',       label: 'Tareas',           icono: '✅' },
+
+  // ── CLIENTES ──────────────────────────────────────
+  { sep: 'Clientes' },
+  { path: '/clientes',     label: 'Clientes',         icono: '👥' },
+  { path: '/contratos',    label: 'Contratos',        icono: '📋' },
   { path: '/facturas',     label: 'Facturas',         icono: '🧾' },
+
+  // ── VENTAS / PROSPECTOS ───────────────────────────
+  { sep: 'Ventas' },
   { path: '/leads',        label: 'Leads',            icono: '🎯' },
   { path: '/cotizaciones', label: 'Cotizaciones',     icono: '📝' },
-  { path: '/tareas',       label: 'Tareas',           icono: '✅' },
-  { path: '/asistente',    label: 'Asistente IA',     icono: '🤖' },
-  { path: '/inventario',   label: 'Inventario',       icono: '📦' },
-  { path: '/alertas',      label: 'Alertas',          icono: '🔔' },
   { path: '/plantillas',   label: 'Plantillas WA',    icono: '💬' },
+
+  // ── INVENTARIO / GPS ──────────────────────────────
+  { sep: 'Equipos' },
+  { path: '/dispositivos', label: 'Dispositivos GPS', icono: '📡' },
+  { path: '/inventario',   label: 'Inventario',       icono: '📦' },
+
+  // ── HERRAMIENTAS ──────────────────────────────────
+  { sep: 'Herramientas' },
+  { path: '/asistente',    label: 'Asistente IA',     icono: '🤖' },
+  { path: '/guia',         label: 'Guía del CRM',     icono: '📘' },
 ];
 
 export default function Sidebar({ abierto, onCerrar, darkMode, toggleDark }) {
@@ -66,29 +83,49 @@ export default function Sidebar({ abierto, onCerrar, darkMode, toggleDark }) {
       </div>
 
       {/* Navegación */}
-      <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-        {menu.map(item => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            style={({ isActive }) => ({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '10px 20px',
-              textDecoration: 'none',
-              fontSize: '13.5px',
-              fontWeight: isActive ? 600 : 400,
-              color: isActive ? 'var(--azul)' : textoNormal,
-              background: isActive ? activeBg : 'transparent',
-              borderRight: isActive ? '3px solid var(--azul)' : '3px solid transparent',
-              transition: 'all 0.15s'
-            })}
-          >
-            <span style={{ fontSize: '16px', width: '20px', textAlign: 'center' }}>{item.icono}</span>
-            {item.label}
-          </NavLink>
-        ))}
+      <nav style={{ flex: 1, overflowY: 'auto', padding: '4px 0 8px' }}>
+        {menu.map((item, idx) => {
+          // Separador de grupo
+          if (item.sep) {
+            return (
+              <div key={`sep-${idx}`} style={{
+                padding: '12px 20px 4px',
+                fontSize: '10px',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                color: darkMode ? '#484f58' : '#9ca3af',
+                borderTop: idx > 0 ? `1px solid ${sidebarBorde}` : 'none',
+                marginTop: idx > 0 ? '4px' : '0'
+              }}>
+                {item.sep}
+              </div>
+            );
+          }
+          // Enlace normal
+          return (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              style={({ isActive }) => ({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '9px 20px',
+                textDecoration: 'none',
+                fontSize: '13px',
+                fontWeight: isActive ? 600 : 400,
+                color: isActive ? 'var(--azul)' : textoNormal,
+                background: isActive ? activeBg : 'transparent',
+                borderRight: isActive ? '3px solid var(--azul)' : '3px solid transparent',
+                transition: 'all 0.15s'
+              })}
+            >
+              <span style={{ fontSize: '15px', width: '20px', textAlign: 'center' }}>{item.icono}</span>
+              {item.label}
+            </NavLink>
+          );
+        })}
       </nav>
 
       {/* Footer del sidebar: dark mode + cerrar sesión */}
