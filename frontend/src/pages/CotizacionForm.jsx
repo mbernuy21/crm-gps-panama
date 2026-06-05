@@ -176,14 +176,36 @@ export default function CotizacionForm() {
     };
     try {
       let cotizacionId = id;
+      let numeroCotizacion = '';
       if (esEdicion) {
         await api.put(`/cotizaciones/${id}`, payload);
+        cotizacionId = id;
       } else {
         const r = await api.post('/cotizaciones', payload);
         cotizacionId = r.data.data.id;
+        numeroCotizacion = r.data.data.numero || cotizacionId;
       }
+      // Descargar PDF con autenticación (fetch + blob en lugar de window.open)
+      toast.info('Generando PDF...', { autoClose: 1500 });
+      const token = localStorage.getItem('token');
       const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-      window.open(`${apiUrl}/api/cotizaciones/${cotizacionId}/pdf`, '_blank');
+      const resp = await fetch(`${apiUrl}/api/cotizaciones/${cotizacionId}/pdf`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (resp.ok) {
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `cotizacion-${numeroCotizacion || cotizacionId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success('PDF descargado');
+      } else {
+        toast.error('Error generando PDF');
+      }
       navigate('/cotizaciones');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Error guardando');
@@ -482,7 +504,13 @@ export default function CotizacionForm() {
                 </button>
               )}
 
-              {esEdicion && (form.whatsapp_cliente || form.telefono_cliente) && (
+              {!esEdicion && form.email_cliente && (
+                <p style={{ fontSize: '11px', color: 'var(--gris)', textAlign: 'center', margin: 0 }}>
+                  💡 Guarda primero para enviar por email
+                </p>
+              )}
+
+              {(form.whatsapp_cliente || form.telefono_cliente) && (
                 <button
                   type="button"
                   onClick={() => {

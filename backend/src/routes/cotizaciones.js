@@ -162,6 +162,157 @@ router.post('/:id/convertir-cliente', async (req, res) => {
   }
 });
 
+// ── Función reutilizable: construir el PDF de una cotización ─────────────
+function construirPDF(doc, cotizacion, items) {
+  // ── Logo / Encabezado de empresa ─────────────────────────────────
+  // Rectángulo azul de logo (izquierda)
+  doc.rect(50, 40, 120, 50).fill('#4F6EF7');
+  doc.fillColor('white').fontSize(14).font('Helvetica-Bold')
+    .text('GPS TRACKER', 55, 48, { width: 110, align: 'center' });
+  doc.fontSize(8).font('Helvetica')
+    .text('P A N A M Á', 55, 64, { width: 110, align: 'center', characterSpacing: 2 });
+  // Pequeña barra decorativa
+  doc.rect(50, 90, 120, 3).fill('#1a1a2e');
+
+  // Datos de la empresa (derecha)
+  doc.fillColor('#1a1a2e').fontSize(11).font('Helvetica-Bold')
+    .text('GPS Tracker Panamá', 200, 40, { width: 345, align: 'right' });
+  doc.fontSize(8.5).font('Helvetica').fillColor('#555')
+    .text('Zona Industrial, Costa del Este, Ciudad de Panamá', 200, 55, { width: 345, align: 'right' })
+    .text('RUC: En trámite  •  Tel: 208-4205  •  Cel: 6643-1330', 200, 67, { width: 345, align: 'right' })
+    .text('6216-4006  •  ventas@gpstrackerpanama.com', 200, 79, { width: 345, align: 'right' })
+    .text('www.gpstrackerpanama.com', 200, 91, { width: 345, align: 'right' });
+
+  // ── Línea divisoria ─────────────────────────────────────────────
+  doc.moveTo(50, 102).lineTo(545, 102).strokeColor('#4F6EF7').lineWidth(2).stroke();
+
+  // ── Título ESTIMACIÓN ───────────────────────────────────────────
+  const yTitulo = 112;
+  doc.rect(50, yTitulo, 495, 30).fill('#f0f4ff');
+  doc.fillColor('#4F6EF7').fontSize(16).font('Helvetica-Bold')
+    .text('ESTIMACIÓN / COTIZACIÓN', 58, yTitulo + 8, { width: 250 });
+
+  doc.fillColor('#374151').fontSize(9).font('Helvetica')
+    .text(`N°  ${String(cotizacion.numero).padStart(4, '0')}`, 400, yTitulo + 5, { width: 140, align: 'right' })
+    .text(`Fecha: ${new Date(cotizacion.created_at).toLocaleDateString('es-PA')}`, 400, yTitulo + 17, { width: 140, align: 'right' });
+  if (cotizacion.fecha_vencimiento) {
+    doc.fillColor('#dc2626').fontSize(8.5)
+      .text(`Válida hasta: ${new Date(cotizacion.fecha_vencimiento).toLocaleDateString('es-PA')}`, 400, yTitulo + 29, { width: 140, align: 'right' });
+  }
+
+  // ── Datos del cliente ───────────────────────────────────────────
+  const yCliente0 = yTitulo + 40;
+  doc.moveTo(50, yCliente0).lineTo(545, yCliente0).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
+
+  doc.fontSize(8).font('Helvetica-Bold').fillColor('#6b7280')
+    .text('FACTURAR A:', 50, yCliente0 + 8);
+  doc.fontSize(12).font('Helvetica-Bold').fillColor('#1a1a2e')
+    .text(cotizacion.nombre_cliente, 50, yCliente0 + 20);
+  doc.font('Helvetica').fontSize(9).fillColor('#555');
+  let yCD = yCliente0 + 35;
+  if (cotizacion.email_cliente) { doc.text(`✉  ${cotizacion.email_cliente}`, 50, yCD); yCD += 13; }
+  if (cotizacion.telefono_cliente) { doc.text(`📞  ${cotizacion.telefono_cliente}`, 50, yCD); yCD += 13; }
+  if (cotizacion.whatsapp_cliente) { doc.text(`💬  WhatsApp: ${cotizacion.whatsapp_cliente}`, 50, yCD); yCD += 13; }
+
+  // ── Título de la sección ────────────────────────────────────────
+  const yTabla = Math.max(yCD + 12, yCliente0 + 60);
+  doc.moveTo(50, yTabla - 6).lineTo(545, yTabla - 6).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
+  doc.fontSize(10).font('Helvetica-Bold').fillColor('#374151')
+    .text('Propuesta de Sistema de Localización GPS Vehicular', 50, yTabla);
+
+  // ── Encabezado tabla ────────────────────────────────────────────
+  const yTHead = yTabla + 18;
+  doc.rect(50, yTHead, 495, 22).fill('#4F6EF7');
+  doc.fillColor('white').fontSize(8.5).font('Helvetica-Bold')
+    .text('DESCRIPCIÓN', 58, yTHead + 7)
+    .text('CANT.', 330, yTHead + 7, { width: 40, align: 'center' })
+    .text('PRECIO', 375, yTHead + 7, { width: 60, align: 'right' })
+    .text('DESC.', 440, yTHead + 7, { width: 45, align: 'right' })
+    .text('IMPORTE', 487, yTHead + 7, { width: 55, align: 'right' });
+
+  // ── Filas de productos ──────────────────────────────────────────
+  let yFila = yTHead + 22;
+  items.forEach((item, i) => {
+    const bgColor = i % 2 === 0 ? '#f9fafb' : 'white';
+    const precio = parseFloat(item.precio) || 0;
+    const cantidad = parseFloat(item.cantidad) || 1;
+    const descuento = parseFloat(item.descuento) || 0;
+    const importe = (precio * cantidad) - descuento;
+
+    const descHeight = item.descripcion
+      ? doc.heightOfString(item.descripcion, { width: 265, fontSize: 8 })
+      : 0;
+    const filaH = Math.max(38, 20 + descHeight + 6);
+
+    doc.rect(50, yFila, 495, filaH).fill(bgColor);
+    doc.fillColor('#1a1a2e').fontSize(9).font('Helvetica-Bold')
+      .text(item.nombre, 58, yFila + 7, { width: 265 });
+    if (item.descripcion) {
+      doc.font('Helvetica').fontSize(8).fillColor('#6b7280')
+        .text(item.descripcion, 58, yFila + 19, { width: 265 });
+    }
+    doc.font('Helvetica').fontSize(9).fillColor('#374151')
+      .text(cantidad.toString(), 330, yFila + 7, { width: 40, align: 'center' })
+      .text(`B/. ${precio.toFixed(2)}`, 375, yFila + 7, { width: 60, align: 'right' })
+      .text(descuento > 0 ? `B/. ${descuento.toFixed(2)}` : '—', 440, yFila + 7, { width: 45, align: 'right' })
+      .text(`B/. ${importe.toFixed(2)}`, 487, yFila + 7, { width: 55, align: 'right' });
+
+    yFila += filaH;
+  });
+
+  // Línea cierre tabla
+  doc.moveTo(50, yFila).lineTo(545, yFila).strokeColor('#4F6EF7').lineWidth(1).stroke();
+
+  // ── Totales ─────────────────────────────────────────────────────
+  yFila += 12;
+  const xLabel = 390;
+  const xVal = 485;
+
+  doc.fontSize(9).font('Helvetica').fillColor('#555')
+    .text('Subtotal:', xLabel, yFila, { width: 85, align: 'right' })
+    .text(`B/. ${parseFloat(cotizacion.subtotal).toFixed(2)}`, xVal, yFila, { width: 60, align: 'right' });
+  yFila += 15;
+
+  if (parseFloat(cotizacion.descuento_global) > 0) {
+    doc.text('Descuento:', xLabel, yFila, { width: 85, align: 'right' })
+      .text(`- B/. ${parseFloat(cotizacion.descuento_global).toFixed(2)}`, xVal, yFila, { width: 60, align: 'right' });
+    yFila += 15;
+  }
+
+  doc.rect(380, yFila - 3, 165, 24).fill('#4F6EF7');
+  doc.fontSize(11).font('Helvetica-Bold').fillColor('white')
+    .text('TOTAL:', xLabel, yFila + 4, { width: 85, align: 'right' })
+    .text(`B/. ${parseFloat(cotizacion.total).toFixed(2)}`, xVal, yFila + 4, { width: 60, align: 'right' });
+  yFila += 32;
+
+  // ── Notas ────────────────────────────────────────────────────────
+  if (cotizacion.notas) {
+    yFila += 8;
+    doc.rect(50, yFila, 495, 14).fill('#f9fafb');
+    doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#374151').text('Notas:', 58, yFila + 3);
+    yFila += 16;
+    doc.font('Helvetica').fillColor('#555').text(cotizacion.notas, 50, yFila, { width: 495 });
+    yFila += 20;
+  }
+
+  // ── Términos ─────────────────────────────────────────────────────
+  yFila += 8;
+  doc.fontSize(8).font('Helvetica').fillColor('#9ca3af')
+    .text('Esta estimación es válida por 15 días a partir de su emisión. Los precios están en Balboas panameños (B/.) equivalentes a USD.', 50, yFila, { width: 495 });
+
+  // ── Footer ───────────────────────────────────────────────────────
+  const yFooter = 750;
+  doc.moveTo(50, yFooter).lineTo(545, yFooter).strokeColor('#4F6EF7').lineWidth(1.5).stroke();
+  doc.rect(50, yFooter + 4, 495, 30).fill('#f0f4ff');
+  doc.fontSize(8).font('Helvetica-Bold').fillColor('#4F6EF7')
+    .text('GPS Tracker Panamá', 58, yFooter + 10, { width: 150 });
+  doc.font('Helvetica').fillColor('#555')
+    .text('gpstrackerpanama.com  •  ventas@gpstrackerpanama.com', 58, yFooter + 21, { width: 250 });
+  doc.fillColor('#555')
+    .text('Tel: 208-4205  •  WhatsApp: 6643-1330 / 6216-4006', 300, yFooter + 10, { width: 290, align: 'right' })
+    .text('Ciudad de Panamá, República de Panamá', 300, yFooter + 21, { width: 290, align: 'right' });
+}
+
 // GET /api/cotizaciones/:id/pdf — generar y descargar PDF
 router.get('/:id/pdf', async (req, res) => {
   try {
@@ -173,123 +324,10 @@ router.get('/:id/pdf', async (req, res) => {
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="cotizacion-${cotizacion.numero}.pdf"`);
+    res.setHeader('Access-Control-Allow-Origin', '*');
     doc.pipe(res);
 
-    // ── Encabezado ──────────────────────────────────────────
-    // Bloque empresa (derecha)
-    doc.fontSize(16).font('Helvetica-Bold').fillColor('#1a1a2e')
-      .text('GPS Tracker Panamá', 350, 50, { align: 'right' });
-    doc.fontSize(9).font('Helvetica').fillColor('#555')
-      .text('Zona Industrial, Costa del Este, PA', 350, 70, { align: 'right' })
-      .text('Marco Bernuy  •  Tel: 208-4205  •  Cel: 6643-1330', 350, 82, { align: 'right' })
-      .text('ventas@gpstrackerpanama.com', 350, 94, { align: 'right' });
-
-    // Título cotización
-    doc.fontSize(22).font('Helvetica-Bold').fillColor('#4F6EF7')
-      .text('ESTIMACIÓN', 50, 50);
-    doc.fontSize(10).font('Helvetica').fillColor('#555')
-      .text(`# ${cotizacion.numero}`, 50, 76)
-      .text(`Fecha: ${new Date(cotizacion.created_at).toLocaleDateString('es-PA')}`, 50, 90);
-    if (cotizacion.fecha_vencimiento) {
-      doc.text(`Válida hasta: ${new Date(cotizacion.fecha_vencimiento).toLocaleDateString('es-PA')}`, 50, 104);
-    }
-
-    // Línea separadora
-    doc.moveTo(50, 125).lineTo(545, 125).strokeColor('#e5e7eb').lineWidth(1).stroke();
-
-    // ── Datos del cliente ───────────────────────────────────
-    doc.fontSize(9).font('Helvetica-Bold').fillColor('#374151')
-      .text('FACTURAR A:', 50, 140);
-    doc.font('Helvetica').fillColor('#1a1a2e').fontSize(12).font('Helvetica-Bold')
-      .text(cotizacion.nombre_cliente, 50, 154);
-    doc.font('Helvetica').fontSize(9).fillColor('#555');
-    let yCliente = 170;
-    if (cotizacion.email_cliente) { doc.text(cotizacion.email_cliente, 50, yCliente); yCliente += 13; }
-    if (cotizacion.telefono_cliente) { doc.text(cotizacion.telefono_cliente, 50, yCliente); yCliente += 13; }
-
-    // ── Título sección ──────────────────────────────────────
-    const yTabla = Math.max(yCliente + 15, 210);
-    doc.fontSize(11).font('Helvetica-Bold').fillColor('#374151')
-      .text('Propuesta de Sistema de Localización GPS', 50, yTabla);
-
-    // ── Encabezado tabla ────────────────────────────────────
-    const yTHead = yTabla + 20;
-    doc.rect(50, yTHead, 495, 22).fill('#4F6EF7');
-    doc.fillColor('white').fontSize(9).font('Helvetica-Bold')
-      .text('DESCRIPCIÓN', 58, yTHead + 7)
-      .text('CANT.', 340, yTHead + 7, { width: 40, align: 'center' })
-      .text('PRECIO', 390, yTHead + 7, { width: 55, align: 'right' })
-      .text('DESC.', 450, yTHead + 7, { width: 40, align: 'right' })
-      .text('IMPORTE', 490, yTHead + 7, { width: 55, align: 'right' });
-
-    // ── Filas de productos ──────────────────────────────────
-    let yFila = yTHead + 22;
-    items.forEach((item, i) => {
-      const bgColor = i % 2 === 0 ? '#f9fafb' : 'white';
-      const precio = parseFloat(item.precio) || 0;
-      const cantidad = parseFloat(item.cantidad) || 1;
-      const descuento = parseFloat(item.descuento) || 0;
-      const importe = (precio * cantidad) - descuento;
-
-      // Calcular altura de fila según descripción
-      const descHeight = item.descripcion
-        ? doc.heightOfString(item.descripcion, { width: 270, fontSize: 8 })
-        : 0;
-      const filaH = Math.max(40, 22 + descHeight + 6);
-
-      doc.rect(50, yFila, 495, filaH).fill(bgColor);
-      doc.fillColor('#1a1a2e').fontSize(9).font('Helvetica-Bold')
-        .text(item.nombre, 58, yFila + 7, { width: 275 });
-      if (item.descripcion) {
-        doc.font('Helvetica').fontSize(8).fillColor('#6b7280')
-          .text(item.descripcion, 58, yFila + 19, { width: 275 });
-      }
-      doc.font('Helvetica').fontSize(9).fillColor('#374151')
-        .text(cantidad.toString(), 340, yFila + 7, { width: 40, align: 'center' })
-        .text(`B/. ${precio.toFixed(2)}`, 390, yFila + 7, { width: 55, align: 'right' })
-        .text(descuento > 0 ? `B/. ${descuento.toFixed(2)}` : '—', 450, yFila + 7, { width: 40, align: 'right' })
-        .text(`B/. ${importe.toFixed(2)}`, 490, yFila + 7, { width: 55, align: 'right' });
-
-      yFila += filaH;
-    });
-
-    // Línea cierre tabla
-    doc.moveTo(50, yFila).lineTo(545, yFila).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
-
-    // ── Totales ─────────────────────────────────────────────
-    yFila += 10;
-    const xLabel = 400;
-    const xVal = 490;
-
-    doc.fontSize(9).font('Helvetica').fillColor('#555')
-      .text('Subtotal:', xLabel, yFila, { width: 80, align: 'right' })
-      .text(`B/. ${parseFloat(cotizacion.subtotal).toFixed(2)}`, xVal, yFila, { width: 55, align: 'right' });
-    yFila += 15;
-
-    if (parseFloat(cotizacion.descuento_global) > 0) {
-      doc.text('Descuento:', xLabel, yFila, { width: 80, align: 'right' })
-        .text(`- B/. ${parseFloat(cotizacion.descuento_global).toFixed(2)}`, xVal, yFila, { width: 55, align: 'right' });
-      yFila += 15;
-    }
-
-    doc.rect(390, yFila - 2, 155, 22).fill('#f3f4f6');
-    doc.fontSize(11).font('Helvetica-Bold').fillColor('#1a1a2e')
-      .text('TOTAL:', xLabel, yFila + 4, { width: 80, align: 'right' })
-      .text(`B/. ${parseFloat(cotizacion.total).toFixed(2)}`, xVal, yFila + 4, { width: 55, align: 'right' });
-    yFila += 30;
-
-    // ── Notas ───────────────────────────────────────────────
-    if (cotizacion.notas) {
-      yFila += 10;
-      doc.fontSize(9).font('Helvetica-Bold').fillColor('#374151').text('Notas:', 50, yFila);
-      doc.font('Helvetica').fillColor('#555').text(cotizacion.notas, 50, yFila + 13, { width: 495 });
-      yFila += 30;
-    }
-
-    // ── Footer ──────────────────────────────────────────────
-    doc.fontSize(8).font('Helvetica').fillColor('#9ca3af')
-      .text('GPS Tracker Panamá  •  gpstrackerpanama.com  •  WhatsApp: 6643-1330 / 6216-4006', 50, 780, { align: 'center', width: 495 });
-
+    construirPDF(doc, cotizacion, items);
     doc.end();
 
     // Marcar como enviada si estaba en borrador
@@ -314,62 +352,14 @@ router.post('/:id/email', async (req, res) => {
 
     const items = JSON.parse(cotizacion.items_json || '[]');
 
-    // Generar PDF en memoria
+    // Generar PDF en memoria usando la misma función del endpoint GET
     const pdfBuffer = await new Promise((resolve, reject) => {
       const doc = new PDFDocument({ margin: 50, size: 'A4' });
       const chunks = [];
       doc.on('data', c => chunks.push(c));
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
-
-      // Mismo diseño que el endpoint PDF
-      doc.fontSize(16).font('Helvetica-Bold').fillColor('#1a1a2e')
-        .text('GPS Tracker Panamá', 350, 50, { align: 'right' });
-      doc.fontSize(9).font('Helvetica').fillColor('#555')
-        .text('Zona Industrial, Costa del Este, PA', 350, 70, { align: 'right' })
-        .text('Marco Bernuy  •  Tel: 208-4205  •  Cel: 6643-1330', 350, 82, { align: 'right' })
-        .text('ventas@gpstrackerpanama.com', 350, 94, { align: 'right' });
-      doc.fontSize(22).font('Helvetica-Bold').fillColor('#4F6EF7').text('ESTIMACIÓN', 50, 50);
-      doc.fontSize(10).font('Helvetica').fillColor('#555')
-        .text(`# ${cotizacion.numero}`, 50, 76)
-        .text(`Fecha: ${new Date(cotizacion.created_at).toLocaleDateString('es-PA')}`, 50, 90);
-      doc.moveTo(50, 125).lineTo(545, 125).strokeColor('#e5e7eb').lineWidth(1).stroke();
-      doc.fontSize(9).font('Helvetica-Bold').fillColor('#374151').text('FACTURAR A:', 50, 140);
-      doc.font('Helvetica').fillColor('#1a1a2e').fontSize(12).font('Helvetica-Bold').text(cotizacion.nombre_cliente, 50, 154);
-
-      const yTHead = 220;
-      doc.rect(50, yTHead, 495, 22).fill('#4F6EF7');
-      doc.fillColor('white').fontSize(9).font('Helvetica-Bold')
-        .text('DESCRIPCIÓN', 58, yTHead + 7)
-        .text('CANT.', 340, yTHead + 7, { width: 40, align: 'center' })
-        .text('PRECIO', 390, yTHead + 7, { width: 55, align: 'right' })
-        .text('IMPORTE', 490, yTHead + 7, { width: 55, align: 'right' });
-
-      let yFila = yTHead + 22;
-      items.forEach((item, i) => {
-        const bgColor = i % 2 === 0 ? '#f9fafb' : 'white';
-        const precio = parseFloat(item.precio) || 0;
-        const cantidad = parseFloat(item.cantidad) || 1;
-        const descuento = parseFloat(item.descuento) || 0;
-        const importe = (precio * cantidad) - descuento;
-        const filaH = item.descripcion ? Math.max(40, 22 + doc.heightOfString(item.descripcion, { width: 270 }) + 6) : 35;
-        doc.rect(50, yFila, 495, filaH).fill(bgColor);
-        doc.fillColor('#1a1a2e').fontSize(9).font('Helvetica-Bold').text(item.nombre, 58, yFila + 7, { width: 275 });
-        if (item.descripcion) doc.font('Helvetica').fontSize(8).fillColor('#6b7280').text(item.descripcion, 58, yFila + 19, { width: 275 });
-        doc.font('Helvetica').fontSize(9).fillColor('#374151')
-          .text(cantidad.toString(), 340, yFila + 7, { width: 40, align: 'center' })
-          .text(`B/. ${precio.toFixed(2)}`, 390, yFila + 7, { width: 55, align: 'right' })
-          .text(`B/. ${importe.toFixed(2)}`, 490, yFila + 7, { width: 55, align: 'right' });
-        yFila += filaH;
-      });
-
-      doc.moveTo(50, yFila).lineTo(545, yFila).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
-      yFila += 15;
-      doc.fontSize(12).font('Helvetica-Bold').fillColor('#1a1a2e')
-        .text('TOTAL:', 400, yFila, { width: 80, align: 'right' })
-        .text(`B/. ${parseFloat(cotizacion.total).toFixed(2)}`, 490, yFila, { width: 55, align: 'right' });
-      doc.fontSize(8).font('Helvetica').fillColor('#9ca3af')
-        .text('GPS Tracker Panamá  •  gpstrackerpanama.com  •  WhatsApp: 6643-1330', 50, 780, { align: 'center', width: 495 });
+      construirPDF(doc, cotizacion, items);
       doc.end();
     });
 

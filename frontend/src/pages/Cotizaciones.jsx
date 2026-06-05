@@ -38,7 +38,7 @@ export default function Cotizaciones() {
   }
 
   async function eliminar(id, numero) {
-    if (!window.confirm(`¿Eliminar cotización #${numero}?`)) return;
+    if (!window.confirm(`¿Eliminar cotización #${numero}? Esta acción no se puede deshacer.`)) return;
     try {
       await api.delete(`/cotizaciones/${id}`);
       toast.success('Cotización eliminada');
@@ -46,9 +46,43 @@ export default function Cotizaciones() {
     } catch { toast.error('Error eliminando cotización'); }
   }
 
-  function descargarPDF(id, numero) {
-    window.open(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/cotizaciones/${id}/pdf`, '_blank');
-    setTimeout(cargar, 2000);
+  async function enviarEmailDesdeListado(cotizacion) {
+    const email = cotizacion.email_cliente;
+    if (!email) {
+      toast.warning('Esta cotización no tiene email de cliente registrado');
+      return;
+    }
+    try {
+      await api.post(`/cotizaciones/${cotizacion.id}/email`, { email });
+      toast.success(`📧 Email enviado a ${email}`);
+      cargar();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error enviando email');
+    }
+  }
+
+  async function descargarPDF(id, numero) {
+    try {
+      toast.info('Generando PDF...', { autoClose: 1500 });
+      const token = localStorage.getItem('token');
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+      const resp = await fetch(`${apiUrl}/api/cotizaciones/${id}/pdf`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!resp.ok) throw new Error(`Error ${resp.status}`);
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cotizacion-${numero}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setTimeout(cargar, 1000); // refrescar estado
+    } catch (err) {
+      toast.error('Error descargando PDF: ' + err.message);
+    }
   }
 
   function compartirWhatsApp(cotizacion) {
@@ -199,6 +233,13 @@ export default function Cotizaciones() {
                               title="Compartir por WhatsApp"
                               style={{ background: '#dcfce7', border: 'none', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', fontSize: '14px' }}
                             >💬</button>
+                          )}
+                          {c.email_cliente && (
+                            <button
+                              onClick={() => enviarEmailDesdeListado(c)}
+                              title={`Enviar email a ${c.email_cliente}`}
+                              style={{ background: '#dbeafe', border: 'none', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', fontSize: '14px' }}
+                            >📧</button>
                           )}
                           {c.estado === 'aceptada' && !c.cliente_id && (
                             <button

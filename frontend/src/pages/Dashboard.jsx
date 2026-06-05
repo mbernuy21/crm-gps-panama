@@ -44,17 +44,41 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [datos, setDatos] = useState(null);
   const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
+  function cargar() {
+    setCargando(true);
+    setError(null);
     api.get('/dashboard').then(r => {
       setDatos(r.data.data);
       setCargando(false);
-    }).catch(() => setCargando(false));
-  }, []);
+    }).catch(err => {
+      console.error('Dashboard error:', err);
+      setError(err.response?.data?.message || 'No se pudo conectar al servidor');
+      setCargando(false);
+    });
+  }
+
+  useEffect(() => { cargar(); }, []);
 
   if (cargando) return (
     <div style={{ textAlign: 'center', padding: '60px', color: 'var(--gris)' }}>
+      <div style={{ fontSize: '32px', marginBottom: '12px' }}>⏳</div>
       Cargando dashboard...
+    </div>
+  );
+
+  if (error) return (
+    <div style={{ textAlign: 'center', padding: '60px' }}>
+      <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
+      <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>Error al cargar el dashboard</h2>
+      <p style={{ color: 'var(--gris)', fontSize: '13px', marginBottom: '20px' }}>{error}</p>
+      <button
+        onClick={cargar}
+        style={{ background: 'var(--azul)', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 24px', cursor: 'pointer', fontWeight: 600 }}
+      >
+        🔄 Reintentar
+      </button>
     </div>
   );
 
