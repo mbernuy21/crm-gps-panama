@@ -78,7 +78,7 @@ function ModalPreview({ cotizacion, onCerrar, onDescargar, onWhatsApp, onEmail }
 
           {/* Título cotización + número */}
           <div style={{ background: '#f0f4ff', borderRadius: '8px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <div style={{ color: '#4F6EF7', fontWeight: 800, fontSize: '18px' }}>ESTIMACIÓN / COTIZACIÓN</div>
+            <div style={{ color: '#4F6EF7', fontWeight: 800, fontSize: '18px' }}>PROPUESTA</div>
             <div style={{ textAlign: 'right', fontSize: '12px', color: '#374151' }}>
               <div style={{ fontWeight: 700 }}>N° {String(cotizacion.numero).padStart(4, '0')}</div>
               <div>Fecha: {new Date(cotizacion.created_at).toLocaleDateString('es-PA')}</div>
@@ -92,7 +92,7 @@ function ModalPreview({ cotizacion, onCerrar, onDescargar, onWhatsApp, onEmail }
 
           {/* Datos del cliente */}
           <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '16px', marginBottom: '20px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>Facturar a:</div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>Cliente:</div>
             <div style={{ fontSize: '16px', fontWeight: 700, color: '#1a1a2e' }}>{cotizacion.nombre_cliente}</div>
             <div style={{ fontSize: '12px', color: '#555', marginTop: '4px', lineHeight: 1.8 }}>
               {cotizacion.email_cliente && <div>Email: {cotizacion.email_cliente}</div>}

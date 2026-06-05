@@ -213,7 +213,7 @@ function construirPDF(doc, cotizacion, items) {
   // ── SECCIÓN: Título + Número ─────────────────────────────────────
   const yTit = yLinea + 10;
   doc.fontSize(20).font('Helvetica-Bold').fillColor('#4F6EF7')
-    .text('ESTIMACIÓN', margen, yTit);
+    .text('PROPUESTA', margen, yTit);
 
   // Caja número/fecha — derecha
   doc.rect(390, yTit - 2, 155, 52).fill('#f8faff');
@@ -236,7 +236,7 @@ function construirPDF(doc, cotizacion, items) {
   const yCliente = yTit + 62;
   doc.rect(margen, yCliente, 310, 14).fill('#f1f5f9');
   doc.fontSize(8).font('Helvetica-Bold').fillColor('#64748b')
-    .text('FACTURAR A', margen + 6, yCliente + 3);
+    .text('CLIENTE', margen + 6, yCliente + 3);
   doc.fontSize(12).font('Helvetica-Bold').fillColor('#111827')
     .text(cotizacion.nombre_cliente || '', margen, yCliente + 18, { width: 310 });
 

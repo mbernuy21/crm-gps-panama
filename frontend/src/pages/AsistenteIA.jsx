@@ -1,4 +1,4 @@
-// Asistente de IA con Google Gemini — GPS Tracker Panamá
+// Asistente de IA con Groq (Llama 3) — GPS Tracker Panamá
 import React, { useState, useRef, useEffect } from 'react';
 import api from '../services/api';
 
@@ -66,7 +66,7 @@ export default function AsistenteIA() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: 700 }}>Asistente IA</h1>
-          <p style={{ color: 'var(--gris)', fontSize: '13px' }}>Powered by Google Gemini — Consulta datos del CRM en lenguaje natural</p>
+          <p style={{ color: 'var(--gris)', fontSize: '13px' }}>Powered by Groq AI — Consulta datos del CRM en lenguaje natural</p>
         </div>
         <button onClick={limpiarChat}
           style={{ background: '#f3f4f6', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontSize: '13px', color: '#374151' }}>
