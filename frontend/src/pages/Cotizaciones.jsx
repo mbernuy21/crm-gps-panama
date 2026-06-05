@@ -278,8 +278,18 @@ export default function Cotizaciones() {
 
   // Construir mensaje y texto de la propuesta
   function buildMensajeCotizacion(cotizacion) {
-    const items = (() => { const r = cotizacion.items_json; if (Array.isArray(r)) return r; if (typeof r === 'string') { try { return JSON.parse(r); } catch {} } return []; })();
-    const lineas = items.map(i => `• ${i.nombre}: B/. ${parseFloat(i.precio || 0).toFixed(2)}`).join('\n');
+    // Parsear items — puede venir como array, string JSON, u objeto
+    const parseItems = (r) => {
+      if (Array.isArray(r) && r.length > 0) return r;
+      if (typeof r === 'string' && r.length > 2) { try { const p = JSON.parse(r); if (Array.isArray(p)) return p; } catch {} }
+      if (r && typeof r === 'object' && !Array.isArray(r)) return Object.values(r);
+      return [];
+    };
+    // Intentar items_json primero, luego items (campo que devuelve GET /:id)
+    const items = parseItems(cotizacion.items_json) || parseItems(cotizacion.items) || [];
+    const lineas = items.length
+      ? items.map(i => `• ${i.nombre || 'Producto'}: B/. ${parseFloat(i.precio || 0).toFixed(2)}${i.cantidad > 1 ? ` x${i.cantidad}` : ''}`).join('\n')
+      : '(Ver PDF adjunto para detalle de productos)';
     return `Estimado/a ${cotizacion.nombre_cliente}, le hacemos llegar la Propuesta #${String(cotizacion.numero).padStart(4,'0')} de GPS Tracker Panamá:\n\n${lineas}\n\n*Total: B/. ${parseFloat(cotizacion.total || 0).toFixed(2)}*\n\nPara consultas estamos a su disposición.\nGPS Tracker Panamá\nCel: 6643-1330 / 6115-1500`;
   }
 

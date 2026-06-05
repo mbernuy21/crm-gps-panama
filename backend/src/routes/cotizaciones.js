@@ -356,9 +356,12 @@ router.get('/:id/pdf', async (req, res) => {
     const [[cotizacion]] = await db.query('SELECT * FROM cotizaciones WHERE id = ?', [req.params.id]);
     if (!cotizacion) return res.status(404).json({ success: false, message: 'No encontrada' });
 
-    // Parsear items de forma segura
+    // Parsear items — MySQL2 puede devolver JSON column ya como array JS
+    const rawPdf = cotizacion.items_json;
     let items = [];
-    try { items = JSON.parse(cotizacion.items_json || '[]'); } catch { items = []; }
+    if (Array.isArray(rawPdf)) items = rawPdf;
+    else if (rawPdf && typeof rawPdf === 'string') { try { items = JSON.parse(rawPdf); } catch { items = []; } }
+    else if (rawPdf && typeof rawPdf === 'object') items = Object.values(rawPdf);
     // Normalizar campos para evitar errores en construirPDF
     cotizacion.subtotal = parseFloat(cotizacion.subtotal) || 0;
     cotizacion.descuento_global = parseFloat(cotizacion.descuento_global) || 0;
@@ -402,7 +405,12 @@ router.post('/:id/email', async (req, res) => {
     const emailDestino = req.body.email || cotizacion.email_cliente;
     if (!emailDestino) return res.status(400).json({ success: false, message: 'No hay email de destino' });
 
-    const items = JSON.parse(cotizacion.items_json || '[]');
+    // Parsear items — MySQL2 puede devolver JSON column ya como array JS
+    const rawEmail = cotizacion.items_json;
+    let items = [];
+    if (Array.isArray(rawEmail)) items = rawEmail;
+    else if (rawEmail && typeof rawEmail === 'string') { try { items = JSON.parse(rawEmail); } catch { items = []; } }
+    else if (rawEmail && typeof rawEmail === 'object') items = Object.values(rawEmail);
 
     // Generar PDF en memoria usando la misma función del endpoint GET
     const pdfBuffer = await new Promise((resolve, reject) => {
