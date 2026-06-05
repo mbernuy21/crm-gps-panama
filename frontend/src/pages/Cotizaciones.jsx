@@ -15,7 +15,7 @@ const COLORES_ESTADO = {
 // ── Modal de vista previa de cotización ──────────────────────────────────────
 function ModalPreview({ cotizacion, onCerrar, onDescargar, onWhatsApp, onEmail }) {
   if (!cotizacion) return null;
-  const items = (() => { try { return JSON.parse(cotizacion.items_json || '[]'); } catch { return []; } })();
+  const items = (() => { const r = cotizacion.items_json; if (Array.isArray(r)) return r; if (typeof r === 'string') { try { return JSON.parse(r); } catch {} } return []; })();
   const subtotal = parseFloat(cotizacion.subtotal) || 0;
   const descuento = parseFloat(cotizacion.descuento_global) || 0;
   const total = parseFloat(cotizacion.total) || 0;
@@ -266,7 +266,7 @@ export default function Cotizaciones() {
   function compartirWhatsApp(cotizacion) {
     const numero = (cotizacion.whatsapp_cliente || cotizacion.telefono_cliente || '').replace(/\D/g, '');
     const telefono = numero.startsWith('507') ? numero : `507${numero}`;
-    const items = (() => { try { return JSON.parse(cotizacion.items_json || '[]'); } catch { return []; } })();
+    const items = (() => { const r = cotizacion.items_json; if (Array.isArray(r)) return r; if (typeof r === 'string') { try { return JSON.parse(r); } catch {} } return []; })();
     const lineas = items.map(i => `• ${i.nombre}: B/. ${parseFloat(i.precio || 0).toFixed(2)}`).join('\n');
     const msg = `Estimado/a ${cotizacion.nombre_cliente}, le hacemos llegar la Estimación #${cotizacion.numero} de GPS Tracker Panamá:\n\n${lineas}\n\n*Total: B/. ${parseFloat(cotizacion.total || 0).toFixed(2)}*\n\nPara consultas estamos a su disposición.\nGPS Tracker Panamá`;
     window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(msg)}`, '_blank');
@@ -391,7 +391,7 @@ export default function Cotizaciones() {
               <tbody>
                 {filtradas.map((c, i) => {
                   const est = COLORES_ESTADO[c.estado] || COLORES_ESTADO.borrador;
-                  const items = (() => { try { return JSON.parse(c.items_json || '[]'); } catch { return []; } })();
+                  const items = (() => { const r = c.items_json; if (Array.isArray(r)) return r; if (typeof r === 'string') { try { return JSON.parse(r); } catch {} } return []; })();
                   return (
                     <tr key={c.id} style={{ borderBottom: '1px solid var(--borde)', background: i % 2 === 0 ? 'white' : '#fafafa' }}>
                       <td style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--azul)' }}>

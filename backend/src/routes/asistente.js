@@ -1,7 +1,7 @@
-// Asistente de IA con Google Gemini — GPS Tracker Panamá
+// Asistente de IA con Groq (llama-3.1-70b) — GPS Tracker Panamá
 const express = require('express');
 const router = express.Router();
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Groq = require('groq-sdk');
 const db = require('../config/database');
 const { authMiddleware: auth } = require('../middleware/auth');
 
@@ -11,10 +11,10 @@ router.post('/chat', auth, async (req, res) => {
     const { mensaje, historial } = req.body;
     if (!mensaje) return res.status(400).json({ success: false, message: 'Mensaje requerido' });
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return res.status(503).json({ success: false, message: 'Asistente IA no configurado. Agrega GEMINI_API_KEY al servidor.' });
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) return res.status(503).json({ success: false, message: 'Asistente IA no configurado. Agrega GROQ_API_KEY al servidor.' });
 
-    // Obtener contexto actualizado de la base de datos
+    // Obtener contexto actualizado del CRM
     const contexto = await obtenerContextoCRM();
 
     // Prompt del sistema con contexto del CRM
@@ -38,30 +38,35 @@ REGLAS:
 - Para acciones que modifican datos, indica al usuario que las realice manualmente en el CRM
 - Sé conciso — respuestas de máximo 3-4 párrafos salvo que se pida más detalle`;
 
-    // Inicializar Gemini — systemInstruction va en getGenerativeModel, no en startChat
-    const genAI = new GoogleGenerativeAI(apiKey);
-    // apiVersion: 'v1' es necesario — v1beta no soporta gemini-1.5-flash
-    const model = genAI.getGenerativeModel(
-      { model: 'gemini-1.5-flash', systemInstruction: systemPrompt },
-      { apiVersion: 'v1' }
-    );
+    // Construir mensajes para Groq (formato OpenAI compatible)
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...(historial || []).map(msg => ({
+        role: msg.rol === 'usuario' ? 'user' : 'assistant',
+        content: msg.contenido
+      })),
+      { role: 'user', content: mensaje }
+    ];
 
-    // Construir historial de chat para Gemini
-    const chat = model.startChat({
-      history: (historial || []).map(msg => ({
-        role: msg.rol === 'usuario' ? 'user' : 'model',
-        parts: [{ text: msg.contenido }]
-      }))
+    // Llamar a Groq
+    const groq = new Groq({ apiKey });
+    const completion = await groq.chat.completions.create({
+      model: 'llama-3.1-70b-versatile',   // Modelo gratuito de alta calidad
+      messages,
+      temperature: 0.7,
+      max_tokens: 1024
     });
 
-    const result = await chat.sendMessage(mensaje);
-    const respuesta = result.response.text();
-
+    const respuesta = completion.choices[0]?.message?.content || 'Sin respuesta';
     res.json({ success: true, data: { respuesta } });
+
   } catch (err) {
     console.error('Error asistente IA:', err.message);
-    if (err.message?.includes('API key')) {
-      return res.status(401).json({ success: false, message: 'API key de Gemini inválida' });
+    if (err.message?.includes('API key') || err.status === 401) {
+      return res.status(401).json({ success: false, message: 'API key de Groq inválida. Verifica GROQ_API_KEY en Railway.' });
+    }
+    if (err.status === 429) {
+      return res.status(429).json({ success: false, message: 'Límite de requests alcanzado. Espera un momento.' });
     }
     res.status(500).json({ success: false, message: 'Error del asistente: ' + err.message });
   }
@@ -70,7 +75,6 @@ REGLAS:
 // Función para construir el contexto del CRM en texto
 async function obtenerContextoCRM() {
   try {
-    // Estadísticas principales (sin tareas para evitar fallos si la tabla no existe)
     const [[stats]] = await db.query(`
       SELECT
         (SELECT COUNT(*) FROM clientes WHERE estado='activo') AS clientes_activos,
@@ -80,69 +84,55 @@ async function obtenerContextoCRM() {
         (SELECT COUNT(*) FROM dispositivos WHERE estado='asignado') AS gps_asignados,
         (SELECT COUNT(*) FROM dispositivos WHERE estado='disponible') AS gps_disponibles,
         (SELECT COUNT(*) FROM leads WHERE estado='nuevo') AS leads_nuevos,
-        (SELECT COUNT(*) FROM leads) AS total_leads,
-        (SELECT COALESCE(SUM(monto),0) FROM pagos WHERE MONTH(fecha_pago)=MONTH(CURDATE()) AND YEAR(fecha_pago)=YEAR(CURDATE())) AS cobros_este_mes,
-        (SELECT COALESCE(SUM(monto),0) FROM pagos WHERE MONTH(fecha_pago)=MONTH(DATE_SUB(CURDATE(),INTERVAL 1 MONTH)) AND YEAR(fecha_pago)=YEAR(DATE_SUB(CURDATE(),INTERVAL 1 MONTH))) AS cobros_mes_anterior
+        (SELECT COALESCE(SUM(monto),0) FROM pagos WHERE MONTH(fecha_pago)=MONTH(CURDATE()) AND YEAR(fecha_pago)=YEAR(CURDATE())) AS cobros_mes,
+        (SELECT COALESCE(SUM(monto),0) FROM pagos) AS cobros_total
     `);
 
-    // Clientes morosos (top 5)
-    const [morosos] = await db.query(`
-      SELECT c.nombre_razon_social, c.whatsapp, ct.monto_total, ct.fecha_proximo_pago,
-        DATEDIFF(CURDATE(), ct.fecha_proximo_pago) AS dias_mora
-      FROM clientes c
-      JOIN contratos ct ON ct.cliente_id = c.id
-      WHERE c.estado = 'moroso'
-      ORDER BY dias_mora DESC LIMIT 5
-    `);
-
-    // Vencimientos próximos (7 días)
-    const [proximos] = await db.query(`
-      SELECT c.nombre_razon_social, ct.fecha_proximo_pago, ct.monto_total,
-        DATEDIFF(ct.fecha_proximo_pago, CURDATE()) AS dias_restantes
-      FROM contratos ct
-      JOIN clientes c ON c.id = ct.cliente_id
-      WHERE ct.estado='activo' AND ct.fecha_proximo_pago BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
-      ORDER BY ct.fecha_proximo_pago ASC LIMIT 10
-    `);
-
-    // Tareas pendientes — con catch propio (tabla puede no existir aún)
+    // Tareas con fallback
     const tareas = await db.query(`
-      SELECT t.titulo, t.prioridad, t.fecha_limite, c.nombre_razon_social AS cliente
-      FROM tareas t
-      LEFT JOIN clientes c ON c.id = t.cliente_id
-      WHERE t.estado != 'completada'
-      ORDER BY t.fecha_limite ASC LIMIT 5
+      SELECT titulo, estado, prioridad, fecha_limite FROM tareas
+      WHERE estado != 'completada' ORDER BY fecha_limite ASC LIMIT 5
     `).then(([rows]) => rows).catch(() => []);
 
-    let ctx = `ESTADÍSTICAS GENERALES:
+    // Últimos 5 pagos
+    const [pagos] = await db.query(`
+      SELECT p.monto, p.fecha_pago, c.nombre_razon_social AS cliente
+      FROM pagos p JOIN clientes c ON c.id = p.cliente_id
+      ORDER BY p.fecha_pago DESC LIMIT 5
+    `).catch(() => [[]]);
+
+    // Clientes morosos
+    const [morosos] = await db.query(`
+      SELECT nombre_razon_social, whatsapp FROM clientes
+      WHERE estado='moroso' LIMIT 5
+    `).catch(() => [[]]);
+
+    let ctx = `
+RESUMEN:
 - Clientes activos: ${stats.clientes_activos} | Morosos: ${stats.clientes_morosos} | Suspendidos: ${stats.clientes_suspendidos} | Total: ${stats.total_clientes}
 - GPS asignados: ${stats.gps_asignados} | Disponibles: ${stats.gps_disponibles}
-- Leads nuevos: ${stats.leads_nuevos} | Total leads: ${stats.total_leads}
-- Cobros este mes: B/.${parseFloat(stats.cobros_este_mes).toFixed(2)}
-- Cobros mes anterior: B/.${parseFloat(stats.cobros_mes_anterior).toFixed(2)}`;
+- Leads nuevos: ${stats.leads_nuevos}
+- Cobros este mes: B/. ${parseFloat(stats.cobros_mes).toFixed(2)} | Total histórico: B/. ${parseFloat(stats.cobros_total).toFixed(2)}`;
 
-    if (morosos.length) {
-      ctx += `\n\nCLIENTES MOROSOS:\n` + morosos.map(m =>
-        `- ${m.nombre_razon_social}: B/.${m.monto_total} — ${m.dias_mora} días de mora`
-      ).join('\n');
+    if (pagos?.length) {
+      ctx += `\n\nÚLTIMOS PAGOS:`;
+      pagos.forEach(p => { ctx += `\n- ${p.cliente}: B/. ${p.monto} el ${new Date(p.fecha_pago).toLocaleDateString('es-PA')}`; });
     }
 
-    if (proximos.length) {
-      ctx += `\n\nVENCIMIENTOS PRÓXIMOS (7 días):\n` + proximos.map(p =>
-        `- ${p.nombre_razon_social}: B/.${p.monto_total} — vence en ${p.dias_restantes} día(s)`
-      ).join('\n');
+    if (morosos?.length) {
+      ctx += `\n\nCLIENTES MOROSOS:`;
+      morosos.forEach(m => { ctx += `\n- ${m.nombre_razon_social} (WA: ${m.whatsapp || 'N/A'})`; });
     }
 
-    if (tareas.length) {
-      ctx += `\n\nTAREAS PENDIENTES:\n` + tareas.map(t =>
-        `- [${t.prioridad}] ${t.titulo}${t.cliente ? ` (${t.cliente})` : ''} — ${t.fecha_limite ? new Date(t.fecha_limite).toLocaleDateString('es-PA') : 'Sin fecha'}`
-      ).join('\n');
+    if (tareas?.length) {
+      ctx += `\n\nTAREAS PENDIENTES:`;
+      tareas.forEach(t => { ctx += `\n- [${t.prioridad}] ${t.titulo} — ${t.estado} (vence: ${t.fecha_limite ? new Date(t.fecha_limite).toLocaleDateString('es-PA') : 'sin fecha'})`; });
     }
 
     return ctx;
   } catch (err) {
     console.error('Error obteniendo contexto CRM:', err.message);
-    return 'No se pudo obtener el contexto del CRM en este momento.';
+    return 'Contexto no disponible temporalmente.';
   }
 }
 
