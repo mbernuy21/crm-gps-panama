@@ -40,10 +40,11 @@ REGLAS:
 
     // Inicializar Gemini — systemInstruction va en getGenerativeModel, no en startChat
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      systemInstruction: systemPrompt
-    });
+    // apiVersion: 'v1' es necesario — v1beta no soporta gemini-1.5-flash
+    const model = genAI.getGenerativeModel(
+      { model: 'gemini-1.5-flash', systemInstruction: systemPrompt },
+      { apiVersion: 'v1' }
+    );
 
     // Construir historial de chat para Gemini
     const chat = model.startChat({

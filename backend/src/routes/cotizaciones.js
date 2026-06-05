@@ -5,6 +5,11 @@ const db = require('../config/database');
 const { authMiddleware } = require('../middleware/auth');
 const PDFDocument = require('pdfkit');
 const nodemailer = require('nodemailer');
+const path = require('path');
+const fs = require('fs');
+
+// Ruta al logo de la empresa
+const LOGO_PATH = path.join(__dirname, '../public/logo.png');
 
 router.use(authMiddleware);
 
@@ -54,7 +59,17 @@ router.get('/:id', async (req, res) => {
       WHERE c.id = ?
     `, [req.params.id]);
     if (!cotizacion) return res.status(404).json({ success: false, message: 'Cotización no encontrada' });
-    cotizacion.items = JSON.parse(cotizacion.items_json || '[]');
+    // MySQL2 puede retornar JSON columns ya parseadas o como string — manejar ambos casos
+    const rawItems = cotizacion.items_json;
+    if (Array.isArray(rawItems)) {
+      cotizacion.items = rawItems;
+    } else if (typeof rawItems === 'string') {
+      try { cotizacion.items = JSON.parse(rawItems); } catch { cotizacion.items = []; }
+    } else if (rawItems && typeof rawItems === 'object') {
+      cotizacion.items = Array.isArray(rawItems) ? rawItems : [];
+    } else {
+      cotizacion.items = [];
+    }
     res.json({ success: true, data: cotizacion });
   } catch (err) {
     console.error('Error obteniendo cotización:', err);
@@ -164,153 +179,176 @@ router.post('/:id/convertir-cliente', async (req, res) => {
 
 // ── Función reutilizable: construir el PDF de una cotización ─────────────
 function construirPDF(doc, cotizacion, items) {
-  // ── Logo / Encabezado de empresa ─────────────────────────────────
-  // Rectángulo azul de logo (izquierda)
-  doc.rect(50, 40, 120, 50).fill('#4F6EF7');
-  doc.fillColor('white').fontSize(14).font('Helvetica-Bold')
-    .text('GPS TRACKER', 55, 48, { width: 110, align: 'center' });
-  doc.fontSize(8).font('Helvetica')
-    .text('P A N A M Á', 55, 64, { width: 110, align: 'center', characterSpacing: 2 });
-  // Pequeña barra decorativa
-  doc.rect(50, 90, 120, 3).fill('#1a1a2e');
+  const margen = 50;
+  const anchoUtil = 495; // 595 - 2*50
+  const tieneItems = items && items.length > 0;
 
-  // Datos de la empresa (derecha)
-  doc.fillColor('#1a1a2e').fontSize(11).font('Helvetica-Bold')
-    .text('GPS Tracker Panamá', 200, 40, { width: 345, align: 'right' });
-  doc.fontSize(8.5).font('Helvetica').fillColor('#555')
-    .text('Zona Industrial, Costa del Este, Ciudad de Panamá', 200, 55, { width: 345, align: 'right' })
-    .text('RUC: En trámite  •  Tel: 208-4205  •  Cel: 6643-1330', 200, 67, { width: 345, align: 'right' })
-    .text('6216-4006  •  ventas@gpstrackerpanama.com', 200, 79, { width: 345, align: 'right' })
-    .text('www.gpstrackerpanama.com', 200, 91, { width: 345, align: 'right' });
+  // ── ENCABEZADO: Logo real + datos empresa ────────────────────────
+  const yTop = 40;
 
-  // ── Línea divisoria ─────────────────────────────────────────────
-  doc.moveTo(50, 102).lineTo(545, 102).strokeColor('#4F6EF7').lineWidth(2).stroke();
+  // Logo de la empresa (imagen real) — izquierda
+  if (fs.existsSync(LOGO_PATH)) {
+    doc.image(LOGO_PATH, margen, yTop, { width: 130, height: 60 });
+  } else {
+    // Fallback si no está el logo
+    doc.rect(margen, yTop, 130, 60).fill('#4F6EF7');
+    doc.fillColor('white').fontSize(13).font('Helvetica-Bold')
+      .text('GPS TRACKER', margen + 5, yTop + 12, { width: 120, align: 'center' });
+    doc.fontSize(8).font('Helvetica')
+      .text('P A N A M A', margen + 5, yTop + 32, { width: 120, align: 'center' });
+  }
 
-  // ── Título ESTIMACIÓN ───────────────────────────────────────────
-  const yTitulo = 112;
-  doc.rect(50, yTitulo, 495, 30).fill('#f0f4ff');
-  doc.fillColor('#4F6EF7').fontSize(16).font('Helvetica-Bold')
-    .text('ESTIMACIÓN / COTIZACIÓN', 58, yTitulo + 8, { width: 250 });
+  // Datos de la empresa — derecha
+  doc.fillColor('#111827').fontSize(12).font('Helvetica-Bold')
+    .text('GPS Tracker Panamá', margen + 130, yTop, { width: anchoUtil - 130, align: 'right' });
+  doc.fontSize(8.5).font('Helvetica').fillColor('#4b5563')
+    .text('Zona Industrial, Costa del Este, Ciudad de Panamá', margen + 130, yTop + 17, { width: anchoUtil - 130, align: 'right' })
+    .text('Tel: 208-4205  |  Cel: 6643-1330 / 6216-4006', margen + 130, yTop + 29, { width: anchoUtil - 130, align: 'right' })
+    .text('ventas@gpstrackerpanama.com', margen + 130, yTop + 41, { width: anchoUtil - 130, align: 'right' })
+    .text('www.gpstrackerpanama.com', margen + 130, yTop + 53, { width: anchoUtil - 130, align: 'right' });
 
-  doc.fillColor('#374151').fontSize(9).font('Helvetica')
-    .text(`N°  ${String(cotizacion.numero).padStart(4, '0')}`, 400, yTitulo + 5, { width: 140, align: 'right' })
-    .text(`Fecha: ${new Date(cotizacion.created_at).toLocaleDateString('es-PA')}`, 400, yTitulo + 17, { width: 140, align: 'right' });
+  // Línea azul divisora
+  const yLinea = yTop + 68;
+  doc.moveTo(margen, yLinea).lineTo(margen + anchoUtil, yLinea).strokeColor('#4F6EF7').lineWidth(2.5).stroke();
+
+  // ── SECCIÓN: Título + Número ─────────────────────────────────────
+  const yTit = yLinea + 10;
+  doc.fontSize(20).font('Helvetica-Bold').fillColor('#4F6EF7')
+    .text('ESTIMACIÓN', margen, yTit);
+
+  // Caja número/fecha — derecha
+  doc.rect(390, yTit - 2, 155, 52).fill('#f8faff');
+  doc.rect(390, yTit - 2, 155, 52).stroke('#e0e7ff');
+  doc.fontSize(9).font('Helvetica').fillColor('#6b7280')
+    .text('NUMERO', 396, yTit + 4)
+    .text('EMITIDO', 396, yTit + 22);
+  doc.fontSize(9).font('Helvetica-Bold').fillColor('#111827')
+    .text(String(cotizacion.numero).padStart(4, '0'), 396, yTit + 4, { width: 143, align: 'right' });
+  const fechaEmision = cotizacion.created_at
+    ? new Date(cotizacion.created_at).toLocaleDateString('es-PA')
+    : new Date().toLocaleDateString('es-PA');
+  doc.text(fechaEmision, 396, yTit + 22, { width: 143, align: 'right' });
   if (cotizacion.fecha_vencimiento) {
-    doc.fillColor('#dc2626').fontSize(8.5)
-      .text(`Válida hasta: ${new Date(cotizacion.fecha_vencimiento).toLocaleDateString('es-PA')}`, 400, yTitulo + 29, { width: 140, align: 'right' });
+    doc.fontSize(8.5).font('Helvetica').fillColor('#dc2626')
+      .text('Válido hasta: ' + new Date(cotizacion.fecha_vencimiento).toLocaleDateString('es-PA'), 396, yTit + 38, { width: 143, align: 'right' });
   }
 
-  // ── Datos del cliente ───────────────────────────────────────────
-  const yCliente0 = yTitulo + 40;
-  doc.moveTo(50, yCliente0).lineTo(545, yCliente0).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
+  // ── SECCIÓN: Facturar a ──────────────────────────────────────────
+  const yCliente = yTit + 62;
+  doc.rect(margen, yCliente, 310, 14).fill('#f1f5f9');
+  doc.fontSize(8).font('Helvetica-Bold').fillColor('#64748b')
+    .text('FACTURAR A', margen + 6, yCliente + 3);
+  doc.fontSize(12).font('Helvetica-Bold').fillColor('#111827')
+    .text(cotizacion.nombre_cliente || '', margen, yCliente + 18, { width: 310 });
 
-  doc.fontSize(8).font('Helvetica-Bold').fillColor('#6b7280')
-    .text('FACTURAR A:', 50, yCliente0 + 8);
-  doc.fontSize(12).font('Helvetica-Bold').fillColor('#1a1a2e')
-    .text(cotizacion.nombre_cliente, 50, yCliente0 + 20);
-  doc.font('Helvetica').fontSize(9).fillColor('#555');
-  let yCD = yCliente0 + 35;
-  if (cotizacion.email_cliente) { doc.text(`Email: ${cotizacion.email_cliente}`, 50, yCD); yCD += 13; }
-  if (cotizacion.telefono_cliente) { doc.text(`Tel: ${cotizacion.telefono_cliente}`, 50, yCD); yCD += 13; }
-  if (cotizacion.whatsapp_cliente) { doc.text(`WhatsApp: ${cotizacion.whatsapp_cliente}`, 50, yCD); yCD += 13; }
+  let yDatosCliente = yCliente + 36;
+  doc.font('Helvetica').fontSize(9).fillColor('#4b5563');
+  if (cotizacion.email_cliente)    { doc.text('Email: ' + cotizacion.email_cliente,       margen, yDatosCliente); yDatosCliente += 13; }
+  if (cotizacion.telefono_cliente) { doc.text('Tel: ' + cotizacion.telefono_cliente,       margen, yDatosCliente); yDatosCliente += 13; }
+  if (cotizacion.whatsapp_cliente) { doc.text('WhatsApp: ' + cotizacion.whatsapp_cliente,  margen, yDatosCliente); yDatosCliente += 13; }
 
-  // ── Título de la sección ────────────────────────────────────────
-  const yTabla = Math.max(yCD + 12, yCliente0 + 60);
-  doc.moveTo(50, yTabla - 6).lineTo(545, yTabla - 6).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
-  doc.fontSize(10).font('Helvetica-Bold').fillColor('#374151')
-    .text('Propuesta de Sistema de Localización GPS Vehicular', 50, yTabla);
+  // ── TABLA DE PRODUCTOS ───────────────────────────────────────────
+  const yTablaInicio = Math.max(yDatosCliente + 14, yCliente + 70);
 
-  // ── Encabezado tabla ────────────────────────────────────────────
-  const yTHead = yTabla + 18;
-  doc.rect(50, yTHead, 495, 22).fill('#4F6EF7');
+  // Encabezado tabla
+  const thH = 24;
+  doc.rect(margen, yTablaInicio, anchoUtil, thH).fill('#4F6EF7');
   doc.fillColor('white').fontSize(8.5).font('Helvetica-Bold')
-    .text('DESCRIPCIÓN', 58, yTHead + 7)
-    .text('CANT.', 330, yTHead + 7, { width: 40, align: 'center' })
-    .text('PRECIO', 375, yTHead + 7, { width: 60, align: 'right' })
-    .text('DESC.', 440, yTHead + 7, { width: 45, align: 'right' })
-    .text('IMPORTE', 487, yTHead + 7, { width: 55, align: 'right' });
+    .text('PROPUESTA DE SISTEMA DE LOCALIZACION GPS', margen + 6, yTablaInicio + 8, { width: 270 })
+    .text('PRECIO', margen + 290, yTablaInicio + 8, { width: 60, align: 'right' })
+    .text('CANTIDAD', margen + 355, yTablaInicio + 8, { width: 50, align: 'center' })
+    .text('DESCUENTO', margen + 408, yTablaInicio + 8, { width: 55, align: 'right' })
+    .text('IMPORTE', margen + 466, yTablaInicio + 8, { width: 55, align: 'right' });
 
-  // ── Filas de productos ──────────────────────────────────────────
-  let yFila = yTHead + 22;
-  items.forEach((item, i) => {
-    const bgColor = i % 2 === 0 ? '#f9fafb' : 'white';
-    const precio = parseFloat(item.precio) || 0;
-    const cantidad = parseFloat(item.cantidad) || 1;
-    const descuento = parseFloat(item.descuento) || 0;
-    const importe = (precio * cantidad) - descuento;
+  let yFila = yTablaInicio + thH;
 
-    const descHeight = item.descripcion
-      ? doc.heightOfString(item.descripcion, { width: 265, fontSize: 8 })
-      : 0;
-    const filaH = Math.max(38, 20 + descHeight + 6);
+  if (!tieneItems) {
+    doc.rect(margen, yFila, anchoUtil, 30).fill('#f9fafb');
+    doc.fontSize(9).font('Helvetica').fillColor('#9ca3af')
+      .text('Sin productos', margen + 6, yFila + 10, { width: anchoUtil - 12, align: 'center' });
+    yFila += 30;
+  } else {
+    items.forEach((item, i) => {
+      const precio    = parseFloat(item.precio)    || 0;
+      const cantidad  = parseFloat(item.cantidad)  || 1;
+      const descuento = parseFloat(item.descuento) || 0;
+      const importe   = (precio * cantidad) - descuento;
+      const nombre    = item.nombre || '';
+      const descripcion = item.descripcion || '';
 
-    doc.rect(50, yFila, 495, filaH).fill(bgColor);
-    doc.fillColor('#1a1a2e').fontSize(9).font('Helvetica-Bold')
-      .text(item.nombre, 58, yFila + 7, { width: 265 });
-    if (item.descripcion) {
-      doc.font('Helvetica').fontSize(8).fillColor('#6b7280')
-        .text(item.descripcion, 58, yFila + 19, { width: 265 });
-    }
-    doc.font('Helvetica').fontSize(9).fillColor('#374151')
-      .text(cantidad.toString(), 330, yFila + 7, { width: 40, align: 'center' })
-      .text(`B/. ${precio.toFixed(2)}`, 375, yFila + 7, { width: 60, align: 'right' })
-      .text(descuento > 0 ? `B/. ${descuento.toFixed(2)}` : '—', 440, yFila + 7, { width: 45, align: 'right' })
-      .text(`B/. ${importe.toFixed(2)}`, 487, yFila + 7, { width: 55, align: 'right' });
+      const altDesc = descripcion
+        ? doc.heightOfString(descripcion, { width: 265, size: 8 })
+        : 0;
+      const filaH = Math.max(32, 18 + altDesc + 8);
 
-    yFila += filaH;
-  });
+      doc.rect(margen, yFila, anchoUtil, filaH).fill(i % 2 === 0 ? '#f8faff' : 'white');
 
-  // Línea cierre tabla
-  doc.moveTo(50, yFila).lineTo(545, yFila).strokeColor('#4F6EF7').lineWidth(1).stroke();
+      doc.fillColor('#111827').fontSize(9.5).font('Helvetica-Bold')
+        .text(nombre, margen + 6, yFila + 8, { width: 270 });
+      if (descripcion) {
+        doc.font('Helvetica').fontSize(8).fillColor('#6b7280')
+          .text(descripcion, margen + 6, yFila + 20, { width: 270 });
+      }
+      doc.font('Helvetica').fontSize(9).fillColor('#374151')
+        .text(`B/. ${precio.toFixed(2)}`,   margen + 290, yFila + 8, { width: 60, align: 'right' })
+        .text(cantidad.toString(),            margen + 355, yFila + 8, { width: 50, align: 'center' })
+        .text(descuento > 0 ? `B/. ${descuento.toFixed(2)}` : '—', margen + 408, yFila + 8, { width: 55, align: 'right' })
+        .text(`B/. ${importe.toFixed(2)}`,   margen + 466, yFila + 8, { width: 55, align: 'right' });
 
-  // ── Totales ─────────────────────────────────────────────────────
-  yFila += 12;
-  const xLabel = 390;
-  const xVal = 485;
+      // Línea separadora suave entre filas
+      doc.moveTo(margen, yFila + filaH).lineTo(margen + anchoUtil, yFila + filaH)
+        .strokeColor('#e5e7eb').lineWidth(0.5).stroke();
 
-  doc.fontSize(9).font('Helvetica').fillColor('#555')
-    .text('Subtotal:', xLabel, yFila, { width: 85, align: 'right' })
-    .text(`B/. ${parseFloat(cotizacion.subtotal).toFixed(2)}`, xVal, yFila, { width: 60, align: 'right' });
-  yFila += 15;
-
-  if (parseFloat(cotizacion.descuento_global) > 0) {
-    doc.text('Descuento:', xLabel, yFila, { width: 85, align: 'right' })
-      .text(`- B/. ${parseFloat(cotizacion.descuento_global).toFixed(2)}`, xVal, yFila, { width: 60, align: 'right' });
-    yFila += 15;
+      yFila += filaH;
+    });
   }
 
-  doc.rect(380, yFila - 3, 165, 24).fill('#4F6EF7');
-  doc.fontSize(11).font('Helvetica-Bold').fillColor('white')
-    .text('TOTAL:', xLabel, yFila + 4, { width: 85, align: 'right' })
-    .text(`B/. ${parseFloat(cotizacion.total).toFixed(2)}`, xVal, yFila + 4, { width: 60, align: 'right' });
-  yFila += 32;
+  // ── TOTALES ──────────────────────────────────────────────────────
+  yFila += 8;
+  const xLbl = 390; const xVal2 = 540;
 
-  // ── Notas ────────────────────────────────────────────────────────
-  if (cotizacion.notas) {
-    yFila += 8;
-    doc.rect(50, yFila, 495, 14).fill('#f9fafb');
-    doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#374151').text('Notas:', 58, yFila + 3);
+  doc.fontSize(9).font('Helvetica').fillColor('#4b5563')
+    .text('Subtotal:', xLbl, yFila, { width: 95, align: 'right' })
+    .text(`B/. ${(cotizacion.subtotal || 0).toFixed(2)}`, xLbl + 100, yFila, { align: 'right' });
+  yFila += 16;
+
+  if ((cotizacion.descuento_global || 0) > 0) {
+    doc.text('Descuento:', xLbl, yFila, { width: 95, align: 'right' })
+      .text(`- B/. ${(cotizacion.descuento_global || 0).toFixed(2)}`, xLbl + 100, yFila, { align: 'right' });
     yFila += 16;
-    doc.font('Helvetica').fillColor('#555').text(cotizacion.notas, 50, yFila, { width: 495 });
-    yFila += 20;
   }
 
-  // ── Términos ─────────────────────────────────────────────────────
+  doc.moveTo(xLbl, yFila - 2).lineTo(margen + anchoUtil, yFila - 2).strokeColor('#4F6EF7').lineWidth(1).stroke();
+  doc.fontSize(12).font('Helvetica-Bold').fillColor('#111827')
+    .text('Total general', xLbl, yFila + 4, { width: 95, align: 'right' })
+    .text(`B/. ${(cotizacion.total || 0).toFixed(2)}`, xLbl + 100, yFila + 4, { align: 'right' });
+  yFila += 28;
+
+  // ── NOTAS ────────────────────────────────────────────────────────
+  if (cotizacion.notas) {
+    yFila += 10;
+    doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#374151').text('Notas:', margen, yFila);
+    yFila += 13;
+    doc.font('Helvetica').fillColor('#4b5563').text(cotizacion.notas, margen, yFila, { width: anchoUtil });
+    yFila += doc.heightOfString(cotizacion.notas, { width: anchoUtil }) + 8;
+  }
+
+  // ── TÉRMINOS ─────────────────────────────────────────────────────
   yFila += 8;
   doc.fontSize(8).font('Helvetica').fillColor('#9ca3af')
-    .text('Esta estimación es válida por 15 días a partir de su emisión. Los precios están en Balboas panameños (B/.) equivalentes a USD.', 50, yFila, { width: 495 });
+    .text('Esta estimación es válida por 15 días a partir de su emisión. Los precios están en Balboas panameños (B/.) equivalentes a USD.', margen, yFila, { width: anchoUtil });
+  yFila += 20;
 
-  // ── Footer ───────────────────────────────────────────────────────
-  const yFooter = 750;
-  doc.moveTo(50, yFooter).lineTo(545, yFooter).strokeColor('#4F6EF7').lineWidth(1.5).stroke();
-  doc.rect(50, yFooter + 4, 495, 30).fill('#f0f4ff');
+  // ── FOOTER — posición dinámica, nunca encima del contenido ───────
+  const yFooter = Math.max(yFila + 10, 730);
+  doc.moveTo(margen, yFooter).lineTo(margen + anchoUtil, yFooter).strokeColor('#4F6EF7').lineWidth(1.5).stroke();
+  doc.rect(margen, yFooter + 3, anchoUtil, 28).fill('#f0f4ff');
   doc.fontSize(8).font('Helvetica-Bold').fillColor('#4F6EF7')
-    .text('GPS Tracker Panamá', 58, yFooter + 10, { width: 150 });
-  doc.font('Helvetica').fillColor('#555')
-    .text('gpstrackerpanama.com  •  ventas@gpstrackerpanama.com', 58, yFooter + 21, { width: 250 });
-  doc.fillColor('#555')
-    .text('Tel: 208-4205  •  WhatsApp: 6643-1330 / 6216-4006', 300, yFooter + 10, { width: 290, align: 'right' })
-    .text('Ciudad de Panamá, República de Panamá', 300, yFooter + 21, { width: 290, align: 'right' });
+    .text('GPS Tracker Panamá', margen + 6, yFooter + 10, { width: 180 });
+    .text('gpstrackerpanama.com  •  ventas@gpstrackerpanama.com', margen + 6, yFooter + 18, { width: 260 });
+  doc.fillColor('#4b5563')
+    .text('Tel: 208-4205  •  6643-1330 / 6216-4006', margen + 270, yFooter + 10, { width: 219, align: 'right' })
+    .text('Ciudad de Panama, Republica de Panama', margen + 270, yFooter + 18, { width: 219, align: 'right' });
 }
 
 // GET /api/cotizaciones/:id/pdf — generar y descargar PDF
