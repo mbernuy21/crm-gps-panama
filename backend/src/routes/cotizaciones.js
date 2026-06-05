@@ -210,9 +210,9 @@ function construirPDF(doc, cotizacion, items) {
     .text(cotizacion.nombre_cliente, 50, yCliente0 + 20);
   doc.font('Helvetica').fontSize(9).fillColor('#555');
   let yCD = yCliente0 + 35;
-  if (cotizacion.email_cliente) { doc.text(`✉  ${cotizacion.email_cliente}`, 50, yCD); yCD += 13; }
-  if (cotizacion.telefono_cliente) { doc.text(`📞  ${cotizacion.telefono_cliente}`, 50, yCD); yCD += 13; }
-  if (cotizacion.whatsapp_cliente) { doc.text(`💬  WhatsApp: ${cotizacion.whatsapp_cliente}`, 50, yCD); yCD += 13; }
+  if (cotizacion.email_cliente) { doc.text(`Email: ${cotizacion.email_cliente}`, 50, yCD); yCD += 13; }
+  if (cotizacion.telefono_cliente) { doc.text(`Tel: ${cotizacion.telefono_cliente}`, 50, yCD); yCD += 13; }
+  if (cotizacion.whatsapp_cliente) { doc.text(`WhatsApp: ${cotizacion.whatsapp_cliente}`, 50, yCD); yCD += 13; }
 
   // ── Título de la sección ────────────────────────────────────────
   const yTabla = Math.max(yCD + 12, yCliente0 + 60);
@@ -320,24 +320,32 @@ router.get('/:id/pdf', async (req, res) => {
     if (!cotizacion) return res.status(404).json({ success: false, message: 'No encontrada' });
 
     const items = JSON.parse(cotizacion.items_json || '[]');
-    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+
+    // Generar PDF en memoria para evitar conflicto entre streaming y catch
+    const pdfBuffer = await new Promise((resolve, reject) => {
+      const doc = new PDFDocument({ margin: 50, size: 'A4' });
+      const chunks = [];
+      doc.on('data', c => chunks.push(c));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+      construirPDF(doc, cotizacion, items);
+      doc.end();
+    });
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="cotizacion-${cotizacion.numero}.pdf"`);
     res.setHeader('Access-Control-Allow-Origin', '*');
-    doc.pipe(res);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.end(pdfBuffer);
 
-    construirPDF(doc, cotizacion, items);
-    doc.end();
-
-    // Marcar como enviada si estaba en borrador
-    await db.query(
+    // Marcar como enviada si estaba en borrador (no bloquea la respuesta)
+    db.query(
       'UPDATE cotizaciones SET estado = "enviada" WHERE id = ? AND estado = "borrador"',
       [req.params.id]
-    );
+    ).catch(e => console.error('Error actualizando estado PDF:', e));
   } catch (err) {
     console.error('Error generando PDF:', err);
-    res.status(500).json({ success: false, message: 'Error generando PDF' });
+    if (!res.headersSent) res.status(500).json({ success: false, message: 'Error generando PDF: ' + err.message });
   }
 });
 
