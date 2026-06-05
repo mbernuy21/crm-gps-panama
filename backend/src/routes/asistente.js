@@ -17,10 +17,6 @@ router.post('/chat', auth, async (req, res) => {
     // Obtener contexto actualizado de la base de datos
     const contexto = await obtenerContextoCRM();
 
-    // Inicializar Gemini con modelo Flash (económico)
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
     // Prompt del sistema con contexto del CRM
     const systemPrompt = `Eres el asistente virtual del CRM de GPS Tracker Panamá, una empresa de rastreo GPS vehicular en Panamá.
 Tu nombre es "GPT GPS" (GPS Panamá Tracker).
@@ -42,13 +38,19 @@ REGLAS:
 - Para acciones que modifican datos, indica al usuario que las realice manualmente en el CRM
 - Sé conciso — respuestas de máximo 3-4 párrafos salvo que se pida más detalle`;
 
+    // Inicializar Gemini — systemInstruction va en getGenerativeModel, no en startChat
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-1.5-flash',
+      systemInstruction: systemPrompt
+    });
+
     // Construir historial de chat para Gemini
     const chat = model.startChat({
       history: (historial || []).map(msg => ({
         role: msg.rol === 'usuario' ? 'user' : 'model',
         parts: [{ text: msg.contenido }]
-      })),
-      systemInstruction: systemPrompt
+      }))
     });
 
     const result = await chat.sendMessage(mensaje);
@@ -67,6 +69,7 @@ REGLAS:
 // Función para construir el contexto del CRM en texto
 async function obtenerContextoCRM() {
   try {
+    // Estadísticas principales (sin tareas para evitar fallos si la tabla no existe)
     const [[stats]] = await db.query(`
       SELECT
         (SELECT COUNT(*) FROM clientes WHERE estado='activo') AS clientes_activos,
@@ -77,8 +80,6 @@ async function obtenerContextoCRM() {
         (SELECT COUNT(*) FROM dispositivos WHERE estado='disponible') AS gps_disponibles,
         (SELECT COUNT(*) FROM leads WHERE estado='nuevo') AS leads_nuevos,
         (SELECT COUNT(*) FROM leads) AS total_leads,
-        (SELECT COUNT(*) FROM tareas WHERE estado!='completada') AS tareas_pendientes,
-        (SELECT COUNT(*) FROM tareas WHERE estado!='completada' AND fecha_limite < CURDATE()) AS tareas_vencidas,
         (SELECT COALESCE(SUM(monto),0) FROM pagos WHERE MONTH(fecha_pago)=MONTH(CURDATE()) AND YEAR(fecha_pago)=YEAR(CURDATE())) AS cobros_este_mes,
         (SELECT COALESCE(SUM(monto),0) FROM pagos WHERE MONTH(fecha_pago)=MONTH(DATE_SUB(CURDATE(),INTERVAL 1 MONTH)) AND YEAR(fecha_pago)=YEAR(DATE_SUB(CURDATE(),INTERVAL 1 MONTH))) AS cobros_mes_anterior
     `);
@@ -103,20 +104,19 @@ async function obtenerContextoCRM() {
       ORDER BY ct.fecha_proximo_pago ASC LIMIT 10
     `);
 
-    // Tareas pendientes urgentes
-    const [tareas] = await db.query(`
+    // Tareas pendientes — con catch propio (tabla puede no existir aún)
+    const tareas = await db.query(`
       SELECT t.titulo, t.prioridad, t.fecha_limite, c.nombre_razon_social AS cliente
       FROM tareas t
       LEFT JOIN clientes c ON c.id = t.cliente_id
       WHERE t.estado != 'completada'
       ORDER BY t.fecha_limite ASC LIMIT 5
-    `);
+    `).then(([rows]) => rows).catch(() => []);
 
     let ctx = `ESTADÍSTICAS GENERALES:
 - Clientes activos: ${stats.clientes_activos} | Morosos: ${stats.clientes_morosos} | Suspendidos: ${stats.clientes_suspendidos} | Total: ${stats.total_clientes}
 - GPS asignados: ${stats.gps_asignados} | Disponibles: ${stats.gps_disponibles}
 - Leads nuevos: ${stats.leads_nuevos} | Total leads: ${stats.total_leads}
-- Tareas pendientes: ${stats.tareas_pendientes} (${stats.tareas_vencidas} vencidas)
 - Cobros este mes: B/.${parseFloat(stats.cobros_este_mes).toFixed(2)}
 - Cobros mes anterior: B/.${parseFloat(stats.cobros_mes_anterior).toFixed(2)}`;
 
