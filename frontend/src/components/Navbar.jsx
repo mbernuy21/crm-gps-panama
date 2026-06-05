@@ -1,14 +1,14 @@
 import React from 'react';
 
-export default function Navbar({ onToggleSidebar }) {
+export default function Navbar({ onToggleSidebar, darkMode, toggleDark }) {
   const usuarioStr = localStorage.getItem('usuario');
   const usuario = usuarioStr ? JSON.parse(usuarioStr) : null;
 
   return (
     <header style={{
       height: '56px',
-      background: 'white',
-      borderBottom: '1px solid var(--borde)',
+      background: darkMode ? '#161b22' : 'white',
+      borderBottom: `1px solid ${darkMode ? '#30363d' : 'var(--borde)'}`,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -16,7 +16,8 @@ export default function Navbar({ onToggleSidebar }) {
       position: 'sticky',
       top: 0,
       zIndex: 50,
-      boxShadow: 'var(--sombra)'
+      boxShadow: 'var(--sombra)',
+      transition: 'background 0.3s'
     }}>
       <button
         onClick={onToggleSidebar}
@@ -27,7 +28,7 @@ export default function Navbar({ onToggleSidebar }) {
           fontSize: '20px',
           padding: '4px 8px',
           borderRadius: '6px',
-          color: '#374151'
+          color: darkMode ? '#c9d1d9' : '#374151'
         }}
         title="Abrir/cerrar menú"
       >
@@ -35,6 +36,24 @@ export default function Navbar({ onToggleSidebar }) {
       </button>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Botón dark mode también en navbar (acceso rápido) */}
+        <button
+          onClick={toggleDark}
+          title={darkMode ? 'Modo claro' : 'Modo oscuro'}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '18px',
+            padding: '4px 6px',
+            borderRadius: '6px',
+            lineHeight: 1,
+            opacity: 0.8
+          }}
+        >
+          {darkMode ? '☀️' : '🌙'}
+        </button>
+
         <span style={{ fontSize: '13px', color: 'var(--gris)' }}>
           {usuario?.nombre || 'Administrador'}
         </span>

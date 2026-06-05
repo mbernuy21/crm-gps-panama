@@ -33,3 +33,83 @@ body {
 
 /* Toast personalizado */
 .Toastify__toast { font-family: 'Inter', sans-serif; border-radius: var(--radio) !important; }
+
+/* ══════════════════════════════════════════════════════
+   DARK MODE — variables y overrides globales
+   ══════════════════════════════════════════════════════ */
+body.dark {
+  background-color: #0d1117;
+  color: #c9d1d9;
+
+  /* Variables de color override */
+  --gris-light: #0d1117;
+  --borde:      #30363d;
+  --gris:       #8b949e;
+  --azul-light: #1c2d4f;
+  --sombra:     0 1px 4px rgba(0,0,0,0.4);
+  --sombra-md:  0 4px 14px rgba(0,0,0,0.5);
+
+  /* Variables exclusivas del dark mode */
+  --card-bg:    #161b22;
+  --card-alt:   #21262d;
+  --texto:      #c9d1d9;
+  --texto-sec:  #8b949e;
+  --input-bg:   #0d1117;
+}
+
+/* Cards / paneles (background: white) */
+body.dark [style*="background: white"],
+body.dark [style*="background:white"] {
+  background: #161b22 !important;
+  color: #c9d1d9 !important;
+}
+
+/* Filas alternas / fondos suaves */
+body.dark [style*="background: #f9fafb"],
+body.dark [style*="background:#f9fafb"],
+body.dark [style*="background: rgb(249, 250, 251)"] {
+  background: #21262d !important;
+}
+
+body.dark [style*="background: #f3f4f6"],
+body.dark [style*="background:#f3f4f6"] {
+  background: #1c2128 !important;
+}
+
+body.dark [style*="background: #f0f4ff"],
+body.dark [style*="background:#f0f4ff"] {
+  background: #1c2d4f !important;
+}
+
+/* Encabezados de tabla */
+body.dark thead tr,
+body.dark [style*="background: #f9fafb"] th {
+  background: #21262d !important;
+}
+
+/* Texto oscuro → claro */
+body.dark [style*="color: #374151"],
+body.dark [style*="color:#374151"] { color: #c9d1d9 !important; }
+body.dark [style*="color: #1a1a2e"],
+body.dark [style*="color:#1a1a2e"] { color: #e6edf3 !important; }
+body.dark [style*="color: #111827"],
+body.dark [style*="color:#111827"] { color: #e6edf3 !important; }
+
+/* Inputs / selects / textareas */
+body.dark input:not([type="range"]),
+body.dark select,
+body.dark textarea {
+  background: #0d1117 !important;
+  color: #c9d1d9 !important;
+  border-color: #30363d !important;
+}
+
+/* Bordes */
+body.dark [style*="border: 1px solid var(--borde)"] { border-color: #30363d !important; }
+body.dark [style*="border-bottom: 1px solid var(--borde)"] { border-color: #30363d !important; }
+body.dark [style*="border-right: 1px solid var(--borde)"] { border-color: #30363d !important; }
+
+/* Scrollbar dark */
+body.dark ::-webkit-scrollbar-track { background: #161b22; }
+body.dark ::-webkit-scrollbar-thumb { background: #30363d; }
+body.dark ::-webkit-scrollbar-thumb:hover { background: #484f58; }
