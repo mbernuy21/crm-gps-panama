@@ -319,7 +319,14 @@ router.get('/:id/pdf', async (req, res) => {
     const [[cotizacion]] = await db.query('SELECT * FROM cotizaciones WHERE id = ?', [req.params.id]);
     if (!cotizacion) return res.status(404).json({ success: false, message: 'No encontrada' });
 
-    const items = JSON.parse(cotizacion.items_json || '[]');
+    // Parsear items de forma segura
+    let items = [];
+    try { items = JSON.parse(cotizacion.items_json || '[]'); } catch { items = []; }
+    // Normalizar campos para evitar errores en construirPDF
+    cotizacion.subtotal = parseFloat(cotizacion.subtotal) || 0;
+    cotizacion.descuento_global = parseFloat(cotizacion.descuento_global) || 0;
+    cotizacion.total = parseFloat(cotizacion.total) || 0;
+    cotizacion.created_at = cotizacion.created_at || new Date();
 
     // Generar PDF en memoria para evitar conflicto entre streaming y catch
     const pdfBuffer = await new Promise((resolve, reject) => {
