@@ -203,9 +203,8 @@ function construirPDF(doc, cotizacion, items) {
     .text('GPS Tracker Panamá', margen + 130, yTop, { width: anchoUtil - 130, align: 'right' });
   doc.fontSize(8.5).font('Helvetica').fillColor('#4b5563')
     .text('Zona Industrial, Costa del Este, Ciudad de Panamá', margen + 130, yTop + 17, { width: anchoUtil - 130, align: 'right' })
-    .text('Tel: 208-4205  |  Cel: 6643-1330 / 6216-4006', margen + 130, yTop + 29, { width: anchoUtil - 130, align: 'right' })
-    .text('ventas@gpstrackerpanama.com', margen + 130, yTop + 41, { width: anchoUtil - 130, align: 'right' })
-    .text('www.gpstrackerpanama.com', margen + 130, yTop + 53, { width: anchoUtil - 130, align: 'right' });
+    .text('RUC: E-8-120869 DV 0', margen + 130, yTop + 29, { width: anchoUtil - 130, align: 'right' })
+    .text('Cel: 6643-1330 / 6115-1500', margen + 130, yTop + 41, { width: anchoUtil - 130, align: 'right' });
 
   // Línea azul divisora
   const yLinea = yTop + 68;
@@ -345,9 +344,9 @@ function construirPDF(doc, cotizacion, items) {
   doc.rect(margen, yFooter + 3, anchoUtil, 28).fill('#f0f4ff');
   doc.fontSize(8).font('Helvetica-Bold').fillColor('#4F6EF7')
     .text('GPS Tracker Panamá', margen + 6, yFooter + 10, { width: 180 });
-    .text('gpstrackerpanama.com  •  ventas@gpstrackerpanama.com', margen + 6, yFooter + 18, { width: 260 });
+    .text('gpstrackerpanama.com  •  RUC: E-8-120869 DV 0', margen + 6, yFooter + 18, { width: 260 });
   doc.fillColor('#4b5563')
-    .text('Tel: 208-4205  •  6643-1330 / 6216-4006', margen + 270, yFooter + 10, { width: 219, align: 'right' })
+    .text('Cel: 6643-1330 / 6115-1500', margen + 270, yFooter + 10, { width: 219, align: 'right' })
     .text('Ciudad de Panama, Republica de Panama', margen + 270, yFooter + 18, { width: 219, align: 'right' });
 }
 

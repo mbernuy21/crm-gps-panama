@@ -68,10 +68,8 @@ function ModalPreview({ cotizacion, onCerrar, onDescargar, onWhatsApp, onEmail }
             <div style={{ textAlign: 'right', fontSize: '12px', color: '#555', lineHeight: 1.7 }}>
               <div style={{ fontSize: '15px', fontWeight: 700, color: '#1a1a2e', marginBottom: '4px' }}>GPS Tracker Panamá</div>
               <div>Zona Industrial, Costa del Este, Ciudad de Panamá</div>
-              <div>RUC: En trámite &nbsp;•&nbsp; Tel: 208-4205</div>
-              <div>Cel: 6643-1330 / 6216-4006</div>
-              <div>ventas@gpstrackerpanama.com</div>
-              <div style={{ color: '#4F6EF7', fontWeight: 600 }}>www.gpstrackerpanama.com</div>
+              <div>RUC: E-8-120869 DV 0</div>
+              <div>Cel: 6643-1330 / 6115-1500</div>
             </div>
           </div>
 
@@ -178,10 +176,10 @@ function ModalPreview({ cotizacion, onCerrar, onDescargar, onWhatsApp, onEmail }
           <div style={{ background: '#f0f4ff', borderRadius: '8px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', borderTop: '2px solid #4F6EF7' }}>
             <div>
               <div style={{ fontWeight: 700, color: '#4F6EF7' }}>GPS Tracker Panamá</div>
-              <div style={{ color: '#555' }}>gpstrackerpanama.com &nbsp;•&nbsp; ventas@gpstrackerpanama.com</div>
+              <div style={{ color: '#555' }}>gpstrackerpanama.com &nbsp;•&nbsp; RUC: E-8-120869 DV 0</div>
             </div>
             <div style={{ textAlign: 'right', color: '#555' }}>
-              <div>Tel: 208-4205 &nbsp;•&nbsp; WhatsApp: 6643-1330 / 6216-4006</div>
+              <div>Cel: 6643-1330 / 6115-1500</div>
               <div>Ciudad de Panamá, República de Panamá</div>
             </div>
           </div>
