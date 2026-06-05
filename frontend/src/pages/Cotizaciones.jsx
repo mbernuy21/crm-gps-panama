@@ -13,7 +13,7 @@ const COLORES_ESTADO = {
 };
 
 // ── Modal de vista previa de cotización ──────────────────────────────────────
-function ModalPreview({ cotizacion, onCerrar, onDescargar, onWhatsApp, onEmail }) {
+function ModalPreview({ cotizacion, onCerrar, onDescargar, onCompartir, onWhatsApp, onEmail }) {
   if (!cotizacion) return null;
   const mob = window.innerWidth < 640;
   const items = (() => { const r = cotizacion.items_json; if (Array.isArray(r)) return r; if (typeof r === 'string') { try { return JSON.parse(r); } catch {} } return []; })();
@@ -47,21 +47,27 @@ function ModalPreview({ cotizacion, onCerrar, onDescargar, onWhatsApp, onEmail }
               ×
             </button>
           </div>
-          {/* Botones de acción — en fila scrollable en móvil */}
-          <div style={{ display: 'flex', gap: '8px', flexWrap: mob ? 'wrap' : 'nowrap' }}>
-            <button onClick={onDescargar}
-              style={{ background: 'white', color: '#4F6EF7', border: 'none', borderRadius: '8px', padding: '7px 12px', fontWeight: 700, cursor: 'pointer', fontSize: '12px', flex: mob ? '1 1 auto' : 'none', whiteSpace: 'nowrap' }}>
-              ⬇ Descargar PDF
+          {/* Botones de acción */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {/* Compartir con selector nativo (móvil: WhatsApp, email, Bluetooth...) */}
+            <button onClick={onCompartir}
+              style={{ background: '#25d366', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 13px', fontWeight: 700, cursor: 'pointer', fontSize: '12px', flex: '1 1 auto', whiteSpace: 'nowrap' }}>
+              📤 Compartir PDF
             </button>
+            {/* WhatsApp solo texto (rápido, sin PDF) */}
             {(cotizacion.whatsapp_cliente || cotizacion.telefono_cliente) && (
               <button onClick={onWhatsApp}
-                style={{ background: '#25d366', color: 'white', border: 'none', borderRadius: '8px', padding: '7px 12px', fontWeight: 700, cursor: 'pointer', fontSize: '12px', flex: mob ? '1 1 auto' : 'none', whiteSpace: 'nowrap' }}>
-                {mob ? '📎 Compartir PDF' : '📎 WhatsApp + PDF'}
+                style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.4)', borderRadius: '8px', padding: '8px 13px', fontWeight: 600, cursor: 'pointer', fontSize: '12px', flex: '1 1 auto', whiteSpace: 'nowrap' }}>
+                💬 Solo texto
               </button>
             )}
+            <button onClick={onDescargar}
+              style={{ background: 'white', color: '#4F6EF7', border: 'none', borderRadius: '8px', padding: '8px 13px', fontWeight: 700, cursor: 'pointer', fontSize: '12px', flex: '1 1 auto', whiteSpace: 'nowrap' }}>
+              ⬇ Descargar
+            </button>
             {cotizacion.email_cliente && (
               <button onClick={onEmail}
-                style={{ background: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', padding: '7px 12px', fontWeight: 700, cursor: 'pointer', fontSize: '12px', flex: mob ? '1 1 auto' : 'none', whiteSpace: 'nowrap' }}>
+                style={{ background: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 13px', fontWeight: 700, cursor: 'pointer', fontSize: '12px', flex: '1 1 auto', whiteSpace: 'nowrap' }}>
                 ✉ Email
               </button>
             )}
@@ -270,43 +276,61 @@ export default function Cotizaciones() {
     }
   }
 
-  async function compartirWhatsApp(cotizacion) {
-    const numero = (cotizacion.whatsapp_cliente || cotizacion.telefono_cliente || '').replace(/\D/g, '');
-    const telefono = numero.startsWith('507') ? numero : `507${numero}`;
+  // Construir mensaje y texto de la propuesta
+  function buildMensajeCotizacion(cotizacion) {
     const items = (() => { const r = cotizacion.items_json; if (Array.isArray(r)) return r; if (typeof r === 'string') { try { return JSON.parse(r); } catch {} } return []; })();
     const lineas = items.map(i => `• ${i.nombre}: B/. ${parseFloat(i.precio || 0).toFixed(2)}`).join('\n');
-    const msg = `Estimado/a ${cotizacion.nombre_cliente}, le hacemos llegar la Propuesta #${String(cotizacion.numero).padStart(4,'0')} de GPS Tracker Panamá:\n\n${lineas}\n\n*Total: B/. ${parseFloat(cotizacion.total || 0).toFixed(2)}*\n\nPara consultas estamos a su disposición.\nGPS Tracker Panamá\nCel: 6643-1330 / 6115-1500`;
+    return `Estimado/a ${cotizacion.nombre_cliente}, le hacemos llegar la Propuesta #${String(cotizacion.numero).padStart(4,'0')} de GPS Tracker Panamá:\n\n${lineas}\n\n*Total: B/. ${parseFloat(cotizacion.total || 0).toFixed(2)}*\n\nPara consultas estamos a su disposición.\nGPS Tracker Panamá\nCel: 6643-1330 / 6115-1500`;
+  }
 
-    // En móvil: intentar Web Share API para adjuntar el PDF directamente
-    if (navigator.share && navigator.canShare) {
-      try {
-        toast.info('Preparando PDF para compartir...', { autoClose: 2000 });
-        const token = localStorage.getItem('token');
-        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-        const resp = await fetch(`${apiUrl}/api/cotizaciones/${cotizacion.id}/pdf`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (resp.ok) {
-          const blob = await resp.blob();
-          const file = new File([blob], `propuesta-${String(cotizacion.numero).padStart(4,'0')}.pdf`, { type: 'application/pdf' });
-          if (navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              title: `Propuesta #${String(cotizacion.numero).padStart(4,'0')} — GPS Tracker Panamá`,
-              text: msg,
-              files: [file]
-            });
-            cambiarEstado(cotizacion.id, 'enviada');
-            return; // éxito — salir
-          }
-        }
-      } catch (err) {
-        if (err.name === 'AbortError') return; // usuario canceló el share sheet
-        // Si falla por otro motivo, cae al fallback de WhatsApp
-        console.warn('Web Share con PDF falló, usando enlace WhatsApp:', err.message);
+  // Compartir PDF con selector nativo del dispositivo (WhatsApp, email, Bluetooth, etc.)
+  async function compartirPDF(cotizacion) {
+    const msg = buildMensajeCotizacion(cotizacion);
+    const nombre = `propuesta-${String(cotizacion.numero).padStart(4,'0')}.pdf`;
+    const titulo = `Propuesta #${String(cotizacion.numero).padStart(4,'0')} — GPS Tracker Panamá`;
+
+    try {
+      toast.info('Preparando PDF...', { autoClose: 2000 });
+      const token = localStorage.getItem('token');
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+      const resp = await fetch(`${apiUrl}/api/cotizaciones/${cotizacion.id}/pdf`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!resp.ok) throw new Error('Error generando PDF');
+      const blob = await resp.blob();
+
+      // Web Share API con archivo — abre selector nativo (WhatsApp, email, etc.)
+      if (navigator.share) {
+        const file = new File([blob], nombre, { type: 'application/pdf' });
+        const shareData = navigator.canShare && navigator.canShare({ files: [file] })
+          ? { title: titulo, text: msg, files: [file] }   // con PDF adjunto
+          : { title: titulo, text: msg };                   // solo texto si no soporta archivos
+
+        await navigator.share(shareData);
+        cambiarEstado(cotizacion.id, 'enviada');
+        return;
       }
-    }
 
-    // Fallback escritorio (o móvil sin soporte): abrir WhatsApp con texto
+      // Fallback: descargar el PDF directamente
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = nombre;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('PDF descargado — ahora adjúntalo en WhatsApp o email');
+      cambiarEstado(cotizacion.id, 'enviada');
+    } catch (err) {
+      if (err.name === 'AbortError') return; // usuario cerró el selector
+      toast.error('Error: ' + err.message);
+    }
+  }
+
+  // WhatsApp solo texto (botón rápido sin PDF)
+  function compartirWhatsApp(cotizacion) {
+    const numero = (cotizacion.whatsapp_cliente || cotizacion.telefono_cliente || '').replace(/\D/g, '');
+    const telefono = numero.startsWith('507') ? numero : `507${numero}`;
+    const msg = buildMensajeCotizacion(cotizacion);
     window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(msg)}`, '_blank');
     cambiarEstado(cotizacion.id, 'enviada');
   }
@@ -345,6 +369,7 @@ export default function Cotizaciones() {
           cotizacion={preview}
           onCerrar={() => setPreview(null)}
           onDescargar={() => { descargarPDF(preview.id, preview.numero); setPreview(null); }}
+          onCompartir={() => compartirPDF(preview)}
           onWhatsApp={() => { compartirWhatsApp(preview); setPreview(null); }}
           onEmail={() => { enviarEmail(preview); setPreview(null); }}
         />
