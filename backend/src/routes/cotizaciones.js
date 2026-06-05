@@ -343,7 +343,7 @@ function construirPDF(doc, cotizacion, items) {
   doc.moveTo(margen, yFooter).lineTo(margen + anchoUtil, yFooter).strokeColor('#4F6EF7').lineWidth(1.5).stroke();
   doc.rect(margen, yFooter + 3, anchoUtil, 28).fill('#f0f4ff');
   doc.fontSize(8).font('Helvetica-Bold').fillColor('#4F6EF7')
-    .text('GPS Tracker Panamá', margen + 6, yFooter + 10, { width: 180 });
+    .text('GPS Tracker Panamá', margen + 6, yFooter + 10, { width: 180 })
     .text('gpstrackerpanama.com  •  RUC: E-8-120869 DV 0', margen + 6, yFooter + 18, { width: 260 });
   doc.fillColor('#4b5563')
     .text('Cel: 6643-1330 / 6115-1500', margen + 270, yFooter + 10, { width: 219, align: 'right' })
