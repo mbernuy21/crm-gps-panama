@@ -17,10 +17,35 @@ async function migrate() {
 
     const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
     console.log('🔄 Ejecutando migraciones...');
-    await conn.query(schema);
-    console.log('✅ Tablas creadas correctamente');
+
+    // Ejecutar cada sentencia por separado para que un error no detenga todo
+    const sentencias = schema
+      .split(';')
+      .map(s => s.trim())
+      .filter(s => s.length > 0 && !s.startsWith('--'));
+
+    let ok = 0;
+    let errores = 0;
+    for (const sentencia of sentencias) {
+      try {
+        await conn.query(sentencia + ';');
+        ok++;
+      } catch (err) {
+        // Ignorar errores de "ya existe" (código 1050 = tabla ya existe, 1060 = columna ya existe)
+        if ([1050, 1060, 1061, 1062].includes(err.errno)) {
+          console.log(`⚠️  Ya existe (ignorado): ${sentencia.substring(0, 60)}...`);
+        } else {
+          console.error(`❌ Error en sentencia: ${err.message}`);
+          console.error(`   SQL: ${sentencia.substring(0, 100)}`);
+          errores++;
+        }
+      }
+    }
+
+    console.log(`✅ Migración completada — ${ok} sentencias OK, ${errores} errores`);
+    if (errores > 0) process.exit(1);
   } catch (err) {
-    console.error('❌ Error en migración:', err.message);
+    console.error('❌ Error conectando a la base de datos:', err.message);
     process.exit(1);
   } finally {
     if (conn) await conn.end();

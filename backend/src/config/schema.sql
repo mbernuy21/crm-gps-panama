@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
   password_hash VARCHAR(255) NOT NULL,
   rol ENUM('admin', 'sub_agente') NOT NULL DEFAULT 'admin',
   activo TINYINT(1) NOT NULL DEFAULT 1,
+  reset_token VARCHAR(255) NULL,
+  reset_token_expiry DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -253,7 +255,3 @@ CREATE TABLE IF NOT EXISTS tareas (
   INDEX idx_fecha_limite (fecha_limite)
 );
 
--- Columnas de recuperación de contraseña en usuarios (si no existen)
-ALTER TABLE usuarios
-  ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255) NULL,
-  ADD COLUMN IF NOT EXISTS reset_token_expiry DATETIME NULL;
