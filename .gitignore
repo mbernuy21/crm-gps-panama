@@ -1,8 +1,9 @@
 node_modules/
+frontend/build/
+frontend/build_*/
+frontend/*.zip
+backend/uploads/*
+!backend/uploads/.gitkeep
 .env
-.env.production
-*.log
 .DS_Store
-build/
-dist/
-uploads/
+*.log
