@@ -19,10 +19,17 @@ async function migrate() {
     console.log('🔄 Ejecutando migraciones...');
 
     // Ejecutar cada sentencia por separado para que un error no detenga todo
-    const sentencias = schema
+    // IMPORTANTE: primero quitar TODAS las líneas de comentario (--),
+    // si no, las sentencias precedidas por comentarios se descartan por error.
+    const schemaSinComentarios = schema
+      .split('\n')
+      .filter(linea => !linea.trim().startsWith('--'))
+      .join('\n');
+
+    const sentencias = schemaSinComentarios
       .split(';')
       .map(s => s.trim())
-      .filter(s => s.length > 0 && !s.startsWith('--'));
+      .filter(s => s.length > 0);
 
     let ok = 0;
     let errores = 0;
