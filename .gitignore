@@ -5,5 +5,7 @@ frontend/*.zip
 backend/uploads/*
 !backend/uploads/.gitkeep
 .env
+.env.production
+.env.*.local
 .DS_Store
 *.log
