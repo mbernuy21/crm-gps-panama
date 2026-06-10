@@ -36,7 +36,7 @@ const menu = [
   { path: '/guia',         label: 'Guía del CRM',     icono: '📘' },
 ];
 
-export default function Sidebar({ abierto, onCerrar, darkMode, toggleDark }) {
+export default function Sidebar({ abierto, onCerrar, onNavegar, darkMode, toggleDark }) {
   const navigate = useNavigate();
 
   function cerrarSesion() {
@@ -109,6 +109,7 @@ export default function Sidebar({ abierto, onCerrar, darkMode, toggleDark }) {
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={onNavegar}
               style={({ isActive }) => ({
                 display: 'flex',
                 alignItems: 'center',

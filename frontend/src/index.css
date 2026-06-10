@@ -113,3 +113,31 @@ body.dark [style*="border-right: 1px solid var(--borde)"] { border-color: #30363
 body.dark ::-webkit-scrollbar-track { background: #161b22; }
 body.dark ::-webkit-scrollbar-thumb { background: #30363d; }
 body.dark ::-webkit-scrollbar-thumb:hover { background: #484f58; }
+
+/* ============================================================
+   RESPONSIVE MÓVIL — mejoras de navegación en celular
+   ============================================================ */
+@media (max-width: 767px) {
+  /* Tablas: scroll horizontal en vez de romper el layout */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Títulos un poco más pequeños */
+  h1 { font-size: 19px !important; }
+
+  /* Reducir padding de celdas para que quepa más */
+  th, td { padding: 8px 10px !important; }
+
+  /* Modales ocupan casi todo el ancho */
+  [style*="maxWidth: '440px'"],
+  [style*="max-width: 440px"],
+  [style*="maxWidth: '520px'"],
+  [style*="max-width: 520px"] { max-width: 100% !important; }
+}
+
+/* Hacer que cualquier contenedor de tabla permita scroll táctil */
+.tabla-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
