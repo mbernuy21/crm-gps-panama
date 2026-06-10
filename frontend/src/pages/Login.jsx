@@ -60,7 +60,8 @@ export default function Login() {
               value={form.email}
               onChange={e => setForm({ ...form, email: e.target.value })}
               required
-              placeholder="admin@gpstrackerpanama.com"
+              autoComplete="off"
+              placeholder="Ingrese su correo"
               style={{
                 width: '100%',
                 padding: '10px 14px',
