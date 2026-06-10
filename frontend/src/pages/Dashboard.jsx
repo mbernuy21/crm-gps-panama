@@ -40,6 +40,16 @@ function KpiCard({ icono, titulo, valor, sub, color = 'var(--azul)', onClick }) 
   );
 }
 
+// Fila del resumen financiero
+function ResumenFila({ label, valor, color }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: '1px solid var(--borde)' }}>
+      <span style={{ fontSize: '13px', color: '#6b7280' }}>{label}</span>
+      <span style={{ fontSize: '15px', fontWeight: 700, color }}>{valor}</span>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [datos, setDatos] = useState(null);
@@ -84,7 +94,10 @@ export default function Dashboard() {
 
   if (!datos) return null;
 
-  const { kpis, alertas_count, ingresos_mensuales, estados_clientes, ultimos_pagos, alertas_detalle } = datos;
+  const { kpis, alertas_count, ingresos_mensuales, estados_clientes, ultimos_pagos, alertas_detalle, pareto, pareto_corte, total_ingresos, tareas_stats } = datos;
+  const mob = window.innerWidth < 768;
+  const colGraficas = mob ? '1fr' : '2fr 1fr';
+  const colDoble = mob ? '1fr' : '1fr 1fr';
 
   // Datos para gráfica de barras (ingresos)
   const barData = {
@@ -114,6 +127,18 @@ export default function Dashboard() {
   };
 
   const totalAlertasDia = (alertas_count.proximos_vencer || 0) + (alertas_count.vencidos || 0);
+
+  // Gráfica Pareto — top clientes por ingresos (80/20)
+  const topClientes = (pareto || []).slice(0, 10);
+  const paretoData = {
+    labels: topClientes.map(c => (c.nombre_razon_social || '').length > 18 ? c.nombre_razon_social.slice(0, 18) + '…' : c.nombre_razon_social),
+    datasets: [{
+      label: 'Pagado (B/.)',
+      data: topClientes.map(c => parseFloat(c.total_pagado)),
+      backgroundColor: topClientes.map(c => c.es_top20 ? '#4F6EF7' : '#c7d2fe'),
+      borderRadius: 5
+    }]
+  };
 
   return (
     <div>
@@ -168,7 +193,7 @@ export default function Dashboard() {
       </div>
 
       {/* Gráficas */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: colGraficas, gap: '20px', marginBottom: '24px' }}>
         <div style={{ background: 'white', borderRadius: 'var(--radio)', padding: '20px', boxShadow: 'var(--sombra)' }}>
           <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '16px', color: '#374151' }}>
             Ingresos últimos 6 meses (B/.)
@@ -191,8 +216,41 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Pareto de clientes + Resumen financiero */}
+      <div style={{ display: 'grid', gridTemplateColumns: colGraficas, gap: '20px', marginBottom: '24px' }}>
+        <div style={{ background: 'white', borderRadius: 'var(--radio)', padding: '20px', boxShadow: 'var(--sombra)' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '4px', color: '#374151' }}>
+            Top 10 clientes por ingresos (Pareto 80/20)
+          </h3>
+          <p style={{ fontSize: '11px', color: 'var(--gris)', marginBottom: '14px' }}>
+            En azul intenso: los clientes que generan el 80% de tus ingresos {pareto_corte ? `(${pareto_corte} clientes)` : ''}
+          </p>
+          {topClientes.length === 0 ? (
+            <p style={{ color: 'var(--gris)', fontSize: '13px', textAlign: 'center', padding: '20px' }}>Sin datos de pagos aún</p>
+          ) : (
+            <Bar data={paretoData} options={{
+              indexAxis: 'y',
+              responsive: true,
+              plugins: { legend: { display: false } },
+              scales: { x: { beginAtZero: true, ticks: { callback: v => 'B/.' + v } } }
+            }} />
+          )}
+        </div>
+
+        <div style={{ background: 'white', borderRadius: 'var(--radio)', padding: '20px', boxShadow: 'var(--sombra)' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '16px', color: '#374151' }}>Resumen financiero</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <ResumenFila label="Ingresos totales (histórico)" valor={`B/. ${parseFloat(total_ingresos || 0).toLocaleString('es-PA', { minimumFractionDigits: 2 })}`} color="#16a34a" />
+            <ResumenFila label="Cobros este mes" valor={`B/. ${parseFloat(kpis.cobros_mes_actual || 0).toLocaleString('es-PA', { minimumFractionDigits: 2 })}`} color="#4F6EF7" />
+            <ResumenFila label="Cobros mes anterior" valor={`B/. ${parseFloat(kpis.cobros_mes_anterior || 0).toLocaleString('es-PA', { minimumFractionDigits: 2 })}`} color="#6b7280" />
+            <ResumenFila label="Tareas pendientes" valor={`${tareas_stats?.pendientes || 0}${tareas_stats?.vencidas ? ` (${tareas_stats.vencidas} vencidas)` : ''}`} color="#f59e0b" />
+            <ResumenFila label="GPS perdidos" valor={kpis.dispositivos_perdidos || 0} color="#ef4444" />
+          </div>
+        </div>
+      </div>
+
       {/* Alertas del día + Últimos pagos */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: colDoble, gap: '20px' }}>
         {/* Alertas */}
         <div style={{ background: 'white', borderRadius: 'var(--radio)', padding: '20px', boxShadow: 'var(--sombra)' }}>
           <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '16px', color: '#374151' }}>
