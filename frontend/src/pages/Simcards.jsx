@@ -72,6 +72,15 @@ export default function Simcards() {
     catch { toast.error('Error eliminando'); }
   }
 
+  async function sincronizar() {
+    if (!window.confirm('Esto revisará todos los dispositivos GPS y marcará como "asignadas" las líneas que ya están en uso. ¿Continuar?')) return;
+    try {
+      const r = await api.post('/simcards/sincronizar');
+      toast.success(r.data.message, { autoClose: 6000 });
+      cargar(); cargarStats();
+    } catch (err) { toast.error(err.response?.data?.message || 'Error sincronizando'); }
+  }
+
   async function importar() {
     if (!textoImport.trim()) return toast.error('Pega la lista de números');
     setImportando(true);
@@ -102,6 +111,10 @@ export default function Simcards() {
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <ExportButton modulo="simcards" label="📊 Excel" />
+          <button onClick={sincronizar}
+            style={{ background: '#0ea5e9', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 16px', fontWeight: 600, cursor: 'pointer', fontSize: '13px' }}>
+            🔄 Sincronizar con GPS
+          </button>
           <button onClick={() => setModalImport(true)}
             style={{ background: '#16a34a', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 16px', fontWeight: 600, cursor: 'pointer', fontSize: '13px' }}>
             📥 Importar lista

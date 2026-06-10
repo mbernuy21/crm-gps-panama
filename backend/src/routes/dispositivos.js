@@ -85,16 +85,20 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Ya existe un dispositivo con ese serial GPS' });
     }
 
-    // Verificar SIM card única (si se proporcionó)
+    // Validar SIM contra el inventario de SIMcards (si se proporcionó)
     const simLimpia = simcard && simcard.trim() !== '' ? simcard.trim() : null;
     if (simLimpia) {
-      const [[simExiste]] = await db.query(
-        'SELECT id, serial_gps FROM dispositivos WHERE simcard = ?', [simLimpia]
-      );
-      if (simExiste) {
+      const [[simInv]] = await db.query('SELECT id, estado FROM simcards WHERE numero = ?', [simLimpia]);
+      if (!simInv) {
         return res.status(400).json({
           success: false,
-          message: `⚠️ La SIM Card ${simLimpia} ya está registrada en el GPS ${simExiste.serial_gps}. Primero retírala de ese equipo antes de asignarla a uno nuevo.`
+          message: `⚠️ La línea ${simLimpia} no está en el inventario de SIM Cards. Agrégala primero en el módulo "SIM Cards".`
+        });
+      }
+      if (simInv.estado === 'asignada') {
+        return res.status(400).json({
+          success: false,
+          message: `⚠️ La línea ${simLimpia} ya está asignada a otro dispositivo. Libérala primero.`
         });
       }
     }
@@ -144,16 +148,20 @@ router.put('/:id', async (req, res) => {
     const [[actual]] = await db.query('SELECT * FROM dispositivos WHERE id = ?', [id]);
     if (!actual) return res.status(404).json({ success: false, message: 'Dispositivo no encontrado' });
 
-    // Verificar SIM card única al actualizar (excluye el propio dispositivo)
+    // Validar SIM contra inventario al actualizar (solo si cambió respecto a la actual)
     const simLimpia = simcard && simcard.trim() !== '' ? simcard.trim() : null;
-    if (simLimpia) {
-      const [[simExiste]] = await db.query(
-        'SELECT id, serial_gps FROM dispositivos WHERE simcard = ? AND id != ?', [simLimpia, id]
-      );
-      if (simExiste) {
+    if (simLimpia && simLimpia !== actual.simcard) {
+      const [[simInv]] = await db.query('SELECT id, estado, dispositivo_id FROM simcards WHERE numero = ?', [simLimpia]);
+      if (!simInv) {
         return res.status(400).json({
           success: false,
-          message: `⚠️ La SIM Card ${simLimpia} ya está registrada en el GPS ${simExiste.serial_gps}. Primero retírala de ese equipo (déjalo en blanco) antes de asignarla aquí.`
+          message: `⚠️ La línea ${simLimpia} no está en el inventario de SIM Cards. Agrégala primero en el módulo "SIM Cards".`
+        });
+      }
+      if (simInv.estado === 'asignada' && simInv.dispositivo_id != id) {
+        return res.status(400).json({
+          success: false,
+          message: `⚠️ La línea ${simLimpia} ya está asignada a otro dispositivo. Libérala primero.`
         });
       }
     }
@@ -194,10 +202,16 @@ router.put('/:id', async (req, res) => {
 // DELETE /api/dispositivos/:id
 router.delete('/:id', async (req, res) => {
   try {
-    const [[disp]] = await db.query('SELECT id FROM dispositivos WHERE id = ?', [req.params.id]);
+    const [[disp]] = await db.query('SELECT id, simcard, serial_gps FROM dispositivos WHERE id = ?', [req.params.id]);
     if (!disp) return res.status(404).json({ success: false, message: 'Dispositivo no encontrado' });
 
+    // Liberar la SIM asociada (vuelve a disponible)
+    if (disp.simcard) {
+      await db.query(`UPDATE simcards SET estado='disponible', dispositivo_id=NULL, cliente_id=NULL WHERE numero=?`, [disp.simcard]).catch(() => {});
+    }
+
     await db.query('DELETE FROM dispositivos WHERE id = ?', [req.params.id]);
+    await auditoria.registrar(req, 'eliminar', 'dispositivo', req.params.id, `Eliminó GPS serial "${disp.serial_gps}"`);
     res.json({ success: true, message: 'Dispositivo eliminado correctamente' });
   } catch (err) {
     console.error('Error eliminando dispositivo:', err);

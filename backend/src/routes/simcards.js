@@ -116,6 +116,43 @@ router.post('/importar', async (req, res) => {
   }
 });
 
+// POST /api/simcards/sincronizar — reconciliar con los dispositivos existentes
+// Marca como 'asignada' toda SIM que ya esté en uso por un dispositivo, y libera las que no.
+router.post('/sincronizar', async (req, res) => {
+  try {
+    // 1) Asignar las SIMs que están en algún dispositivo
+    const [dispConSim] = await db.query(
+      `SELECT id, simcard, cliente_id FROM dispositivos WHERE simcard IS NOT NULL AND simcard != ''`
+    );
+    let asignadas = 0, noEncontradas = 0;
+    for (const d of dispConSim) {
+      const [r] = await db.query(
+        `UPDATE simcards SET estado='asignada', dispositivo_id=?, cliente_id=? WHERE numero=?`,
+        [d.id, d.cliente_id || null, d.simcard.trim()]
+      );
+      if (r.affectedRows > 0) asignadas++; else noEncontradas++;
+    }
+
+    // 2) Liberar SIMs marcadas 'asignada' cuyo dispositivo ya no las usa
+    const [liberadasRes] = await db.query(`
+      UPDATE simcards s
+      LEFT JOIN dispositivos d ON d.id = s.dispositivo_id AND d.simcard = s.numero
+      SET s.estado='disponible', s.dispositivo_id=NULL, s.cliente_id=NULL
+      WHERE s.estado='asignada' AND d.id IS NULL
+    `);
+
+    await auditoria.registrar(req, 'editar', 'simcard', null, `Sincronizó SIMs con dispositivos: ${asignadas} asignadas, ${liberadasRes.affectedRows} liberadas`);
+    res.json({
+      success: true,
+      message: `✅ Sincronización lista: ${asignadas} líneas marcadas como asignadas, ${liberadasRes.affectedRows} liberadas.${noEncontradas ? ` ${noEncontradas} SIMs de dispositivos no estaban en el inventario.` : ''}`,
+      data: { asignadas, liberadas: liberadasRes.affectedRows, noEncontradas }
+    });
+  } catch (err) {
+    console.error('Error sincronizando simcards:', err);
+    res.status(500).json({ success: false, message: 'Error sincronizando: ' + err.message });
+  }
+});
+
 // PUT /api/simcards/:id — actualizar
 router.put('/:id', async (req, res) => {
   try {

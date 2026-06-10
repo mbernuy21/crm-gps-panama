@@ -8,12 +8,18 @@ import ImportarGoogleSheets from '../components/ImportarGoogleSheets';
 
 const ESTADOS_GPS = ['disponible', 'asignado', 'devuelto', 'perdido', 'duplicado'];
 
-function ModalDispositivo({ dispositivo, clientes, onGuardar, onCerrar }) {
+function ModalDispositivo({ dispositivo, clientes, simsDisponibles = [], onGuardar, onCerrar }) {
   const [form, setForm] = useState(dispositivo || {
     serial_gps: '', simcard: '', placa_vehiculo: '', modelo_auto: '',
     tipo_producto: 'fijo', modalidad: 'alquiler', valor_equipo_usd: 150,
     estado: 'disponible', cliente_id: '', notas: ''
   });
+
+  // Opciones del desplegable: las disponibles + la que ya tiene este equipo (al editar)
+  const opcionesSim = [...simsDisponibles];
+  if (form.simcard && !opcionesSim.some(s => s.numero === form.simcard)) {
+    opcionesSim.unshift({ numero: form.simcard, operador: '(actual)' });
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -44,8 +50,26 @@ function ModalDispositivo({ dispositivo, clientes, onGuardar, onCerrar }) {
               <input required value={form.serial_gps} onChange={e => setForm({ ...form, serial_gps: e.target.value })}
                 style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--borde)', borderRadius: '7px', fontSize: '13px' }} />
             </div>
+            {/* SIM Card — desplegable de líneas disponibles del inventario */}
+            <div style={{ gridColumn: '1/-1' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '4px' }}>
+                SIM Card / Línea {simsDisponibles.length > 0 && <span style={{ color: 'var(--gris)', fontWeight: 400 }}>({simsDisponibles.length} disponibles)</span>}
+              </label>
+              <select value={form.simcard || ''} onChange={e => setForm({ ...form, simcard: e.target.value })}
+                style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--borde)', borderRadius: '7px', fontSize: '13px' }}>
+                <option value="">— Sin SIM asignada —</option>
+                {opcionesSim.map(s => (
+                  <option key={s.numero} value={s.numero}>
+                    {s.numero}{s.operador ? ` · ${s.operador}` : ''}
+                  </option>
+                ))}
+              </select>
+              <p style={{ fontSize: '11px', color: 'var(--gris)', marginTop: '4px' }}>
+                Solo aparecen líneas disponibles. Al guardar, la línea se marca como asignada automáticamente.
+              </p>
+            </div>
             {[
-              ['SIM Card', 'simcard'], ['Placa Vehículo', 'placa_vehiculo'], ['Modelo Auto', 'modelo_auto']
+              ['Placa Vehículo', 'placa_vehiculo'], ['Modelo Auto', 'modelo_auto']
             ].map(([label, key]) => (
               <div key={key}>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '4px' }}>{label}</label>
@@ -114,6 +138,7 @@ function ModalDispositivo({ dispositivo, clientes, onGuardar, onCerrar }) {
 export default function Dispositivos() {
   const [dispositivos, setDispositivos] = useState([]);
   const [clientes, setClientes] = useState([]);
+  const [simsDisponibles, setSimsDisponibles] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [modal, setModal] = useState(null);
   const [confirmar, setConfirmar] = useState({ visible: false, id: null });
@@ -142,10 +167,12 @@ export default function Dispositivos() {
     }
     Promise.all([
       api.get(`/dispositivos?${params}`),
-      api.get('/clientes?limit=500')
-    ]).then(([d, c]) => {
+      api.get('/clientes?limit=500'),
+      api.get('/simcards?estado=disponible').catch(() => ({ data: { data: [] } }))
+    ]).then(([d, c, s]) => {
       setDispositivos(d.data.data);
       setClientes(c.data.data);
+      setSimsDisponibles(s.data.data || []);
       setCargando(false);
     }).catch(() => setCargando(false));
   }
@@ -264,6 +291,7 @@ export default function Dispositivos() {
         <ModalDispositivo
           dispositivo={modal.id ? modal : null}
           clientes={clientes}
+          simsDisponibles={simsDisponibles}
           onGuardar={() => { setModal(null); cargar(); }}
           onCerrar={() => setModal(null)}
         />
