@@ -252,10 +252,38 @@ async function obtenerDatosEstadoCuenta(clienteId) {
 router.post('/semanal', auth, async (req, res) => {
   try {
     await generarYEnviarReporteSemanal();
-    res.json({ success: true, message: 'Reporte semanal enviado a ' + (process.env.EMAIL_BACKUP || 'fiverr.marco21@gmail.com') });
+    res.json({ success: true, message: 'Reporte semanal enviado a ' + (process.env.EMAIL_BACKUP || process.env.EMAIL_FROM || 'tu correo') });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: 'Error generando reporte: ' + err.message });
+  }
+});
+
+// GET /api/reportes/diagnostico-email — verifica si el SMTP está bien configurado
+router.get('/diagnostico-email', auth, async (req, res) => {
+  const faltantes = [];
+  if (!process.env.SMTP_HOST) faltantes.push('SMTP_HOST');
+  if (!process.env.SMTP_USER) faltantes.push('SMTP_USER');
+  if (!process.env.SMTP_PASS) faltantes.push('SMTP_PASS');
+  const destino = process.env.EMAIL_BACKUP || process.env.EMAIL_FROM || null;
+  if (!destino) faltantes.push('EMAIL_BACKUP o EMAIL_FROM');
+
+  if (faltantes.length) {
+    return res.json({
+      success: false,
+      configurado: false,
+      message: `Faltan variables en Railway: ${faltantes.join(', ')}. Por eso no llega el correo semanal.`,
+      faltantes
+    });
+  }
+
+  // Intentar conectar al servidor SMTP
+  try {
+    const transporter = crearTransporter();
+    await transporter.verify();
+    res.json({ success: true, configurado: true, message: `✅ Email configurado correctamente. Los reportes llegarán a: ${destino}` });
+  } catch (err) {
+    res.json({ success: false, configurado: false, message: `❌ Las credenciales SMTP no funcionan: ${err.message}. Revisa SMTP_USER/SMTP_PASS en Railway.` });
   }
 });
 

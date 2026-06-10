@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import api from '../services/api';
+import ExportButton from '../components/ExportButton';
 
 const ACCION_COLORES = {
   crear:          { bg: '#dcfce7', color: '#16a34a', label: 'Creó', icono: '➕' },
@@ -35,12 +36,56 @@ export default function Auditoria() {
     return d.toLocaleString('es-PA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
+  async function verificarEmail() {
+    try {
+      const r = await api.get('/reportes/diagnostico-email');
+      if (r.data.configurado) toast.success(r.data.message, { autoClose: 6000 });
+      else toast.warning(r.data.message, { autoClose: 8000 });
+    } catch { toast.error('Error verificando email'); }
+  }
+
+  async function enviarReporteAhora() {
+    toast.info('Generando y enviando reporte...', { autoClose: 2000 });
+    try {
+      const r = await api.post('/reportes/semanal');
+      toast.success(r.data.message, { autoClose: 6000 });
+    } catch (err) { toast.error(err.response?.data?.message || 'Error enviando reporte'); }
+  }
+
   return (
     <div>
       <div style={{ marginBottom: '20px' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 700 }}>🛡️ Auditoría de actividad</h1>
-        <p style={{ color: 'var(--gris)', fontSize: '13px' }}>Registro de quién creó, editó o eliminó cada dato del CRM</p>
+        <h1 style={{ fontSize: '22px', fontWeight: 700 }}>🛡️ Auditoría y respaldos</h1>
+        <p style={{ color: 'var(--gris)', fontSize: '13px' }}>Quién hizo cada cambio + respaldo de datos a Excel</p>
       </div>
+
+      {/* Panel de respaldo de datos */}
+      <div style={{ background: 'white', borderRadius: '12px', padding: '18px', boxShadow: 'var(--sombra)', marginBottom: '20px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>📦 Respaldo de la base de datos (Excel)</h3>
+        <p style={{ fontSize: '12px', color: 'var(--gris)', marginBottom: '12px' }}>
+          Descarga tus datos en Excel cuando quieras. Recomendado: hazlo cada semana como respaldo.
+        </p>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <ExportButton modulo="clientes" label="👥 Clientes" />
+          <ExportButton modulo="contratos" label="📋 Contratos" />
+          <ExportButton modulo="pagos" label="💳 Pagos" />
+          <ExportButton modulo="dispositivos" label="📡 Dispositivos" />
+          <ExportButton modulo="simcards" label="📱 SIMs" />
+          <ExportButton modulo="leads" label="🎯 Leads" />
+        </div>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--borde)' }}>
+          <button onClick={verificarEmail}
+            style={{ padding: '8px 14px', background: '#f3f4f6', border: '1px solid var(--borde)', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
+            🔍 Verificar email semanal
+          </button>
+          <button onClick={enviarReporteAhora}
+            style={{ padding: '8px 14px', background: 'var(--azul)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
+            ✉️ Enviar reporte ahora
+          </button>
+        </div>
+      </div>
+
+      <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px' }}>Actividad reciente</h3>
 
       {/* Filtros por tipo */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
