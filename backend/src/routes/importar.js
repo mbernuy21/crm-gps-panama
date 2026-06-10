@@ -231,6 +231,73 @@ router.post('/clientes', auth, async (req, res) => {
   }
 });
 
+// POST /api/importar/gmail-contactos — importar contactos exportados de Google Contacts (Gmail)
+// Acepta { csv: "texto del CSV de Google Contacts", destino: "leads" | "clientes" }
+router.post('/gmail-contactos', auth, async (req, res) => {
+  try {
+    const { csv, destino } = req.body;
+    if (!csv || !csv.trim()) return res.status(400).json({ success: false, message: 'Pega el contenido del CSV de Google Contacts' });
+
+    const filas = parsearCSV(csv);
+    if (!filas.length) return res.status(400).json({ success: false, message: 'No se detectaron contactos en el CSV' });
+
+    // Función para extraer el primer valor disponible de una lista de posibles columnas
+    const val = (fila, claves) => {
+      for (const k of claves) { if (fila[k] && fila[k].trim()) return fila[k].trim(); }
+      return '';
+    };
+
+    let importados = 0, omitidos = 0;
+    const aLeads = destino !== 'clientes'; // por defecto a leads (prospectos)
+
+    for (const fila of filas) {
+      // Nombre: "name", o combinar given+family
+      const nombre = val(fila, ['name', 'nombre']) ||
+        `${val(fila, ['given_name', 'first_name'])} ${val(fila, ['family_name', 'last_name'])}`.trim();
+      // Teléfono y email: Google usa "phone_1_-_value", "e-mail_1_-_value"
+      const telefono = val(fila, ['phone_1_-_value', 'phone_1_value', 'phone', 'telefono', 'telefono_principal', 'whatsapp']);
+      const email = val(fila, ['e-mail_1_-_value', 'e-mail_1_value', 'email', 'e-mail', 'correo']);
+
+      if (!nombre && !telefono) { omitidos++; continue; }
+
+      try {
+        if (aLeads) {
+          // Evitar duplicar leads por teléfono
+          if (telefono) {
+            const [[dup]] = await db.query('SELECT id FROM leads WHERE telefono = ? OR whatsapp = ?', [telefono, telefono]);
+            if (dup) { omitidos++; continue; }
+          }
+          await db.query(
+            `INSERT INTO leads (nombre, telefono, whatsapp, email, estado, notas)
+             VALUES (?, ?, ?, ?, 'nuevo', 'Importado desde Gmail')`,
+            [nombre || 'Sin nombre', telefono || null, telefono || null, email || null]
+          );
+        } else {
+          if (telefono) {
+            const [[dup]] = await db.query('SELECT id FROM clientes WHERE telefono_principal = ? OR whatsapp = ?', [telefono, telefono]);
+            if (dup) { omitidos++; continue; }
+          }
+          await db.query(
+            `INSERT INTO clientes (nombre_razon_social, tipo_cliente, telefono_principal, whatsapp, email, estado, notas_internas)
+             VALUES (?, 'natural', ?, ?, ?, 'activo', 'Importado desde Gmail')`,
+            [nombre || 'Sin nombre', telefono || null, telefono || null, email || null]
+          );
+        }
+        importados++;
+      } catch { omitidos++; }
+    }
+
+    res.json({
+      success: true,
+      data: { importados, omitidos },
+      message: `✅ ${importados} contactos importados a ${aLeads ? 'Leads' : 'Clientes'}, ${omitidos} omitidos (duplicados o vacíos)`
+    });
+  } catch (err) {
+    console.error('Error importando Gmail:', err.message);
+    res.status(500).json({ success: false, message: 'Error importando contactos: ' + err.message });
+  }
+});
+
 // GET /api/importar/plantillas — descargar plantilla CSV de ejemplo
 router.get('/plantilla/dispositivos', auth, (req, res) => {
   const csv = `serial_gps,simcard,placa_vehiculo,modelo_auto,tipo_producto,modalidad,valor_equipo_usd

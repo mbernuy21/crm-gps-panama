@@ -114,6 +114,29 @@ export default function Leads() {
   const [modal, setModal] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState('');
+  const [modalGmail, setModalGmail] = useState(false);
+  const [csvGmail, setCsvGmail] = useState('');
+  const [importandoGmail, setImportandoGmail] = useState(false);
+
+  async function importarGmail() {
+    if (!csvGmail.trim()) return toast.error('Pega el contenido del CSV de Google Contacts');
+    setImportandoGmail(true);
+    try {
+      const r = await api.post('/importar/gmail-contactos', { csv: csvGmail, destino: 'leads' });
+      toast.success(r.data.message);
+      setModalGmail(false); setCsvGmail('');
+      cargar();
+    } catch (err) { toast.error(err.response?.data?.message || 'Error importando'); }
+    finally { setImportandoGmail(false); }
+  }
+
+  function leerArchivoCsv(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => setCsvGmail(ev.target.result);
+    reader.readAsText(file);
+  }
 
   function cargar() {
     setCargando(true);
@@ -162,8 +185,12 @@ export default function Leads() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1 style={{ fontSize: '22px', fontWeight: 700 }}>Leads — Pipeline</h1>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <ExportButton modulo="leads" />
+          <button onClick={() => setModalGmail(true)}
+            style={{ padding: '8px 16px', background: '#ea4335', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
+            ✉️ Importar de Gmail
+          </button>
           <button onClick={() => setModal({})}
             style={{ padding: '8px 18px', background: 'var(--azul)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
             + Nuevo lead
@@ -251,6 +278,34 @@ export default function Leads() {
           onGuardar={() => { setModal(null); cargar(); }}
           onCerrar={() => setModal(null)}
         />
+      )}
+
+      {/* Modal Importar de Gmail */}
+      {modalGmail && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '24px 16px' }}
+          onClick={e => e.target === e.currentTarget && setModalGmail(false)}>
+          <div style={{ background: 'white', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '560px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>✉️ Importar contactos de Gmail</h2>
+            <div style={{ background: '#fef2f2', borderRadius: '8px', padding: '12px', fontSize: '12px', color: '#7f1d1d', marginBottom: '14px', lineHeight: 1.6 }}>
+              <strong>Cómo obtener tus contactos:</strong><br />
+              1. Entra a <strong>contacts.google.com</strong><br />
+              2. Menú izquierdo → <strong>Exportar</strong><br />
+              3. Formato <strong>Google CSV</strong> → Descargar<br />
+              4. Sube ese archivo aquí abajo (o ábrelo y pega su contenido)
+            </div>
+            <input type="file" accept=".csv" onChange={leerArchivoCsv}
+              style={{ marginBottom: '12px', fontSize: '13px' }} />
+            <textarea value={csvGmail} onChange={e => setCsvGmail(e.target.value)}
+              placeholder="O pega aquí el contenido del CSV..."
+              style={{ width: '100%', minHeight: '120px', padding: '10px', border: '1px solid var(--borde)', borderRadius: '8px', fontSize: '12px', fontFamily: 'monospace', boxSizing: 'border-box' }} />
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button onClick={() => setModalGmail(false)} style={{ flex: 1, padding: '11px', background: '#f3f4f6', border: '1px solid var(--borde)', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>Cancelar</button>
+              <button onClick={importarGmail} disabled={importandoGmail} style={{ flex: 1, padding: '11px', background: '#ea4335', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>
+                {importandoGmail ? 'Importando...' : 'Importar a Leads'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
