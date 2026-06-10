@@ -293,3 +293,6 @@ CREATE TABLE IF NOT EXISTS simcards (
   INDEX idx_estado (estado),
   INDEX idx_numero (numero)
 );
+
+-- Permitir plantillas WhatsApp personalizadas (amplía el ENUM tipo)
+ALTER TABLE plantillas_whatsapp MODIFY COLUMN tipo VARCHAR(40) NOT NULL DEFAULT 'personalizada';

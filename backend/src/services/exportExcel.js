@@ -147,11 +147,54 @@ function generarExcelInventario(dispositivos) {
   return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 }
 
+// Excel de contratos
+function generarExcelContratos(contratos) {
+  const datos = contratos.map(c => ({
+    'ID': c.id,
+    'Cliente': c.cliente_nombre || '',
+    'Frecuencia': c.frecuencia,
+    'Monto (B/.)': parseFloat(c.monto_total).toFixed(2),
+    'Fecha inicio': formatFecha(c.fecha_inicio),
+    'Próximo pago': formatFecha(c.fecha_proximo_pago),
+    'Días para vencer': c.dias_para_vencer,
+    'Estado': c.estado,
+    'Estado cliente': c.cliente_estado || ''
+  }));
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(datos);
+  ws['!cols'] = [{ wch: 6 }, { wch: 30 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }];
+  XLSX.utils.book_append_sheet(wb, ws, 'Contratos');
+  return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+}
+
+// Excel de SIM cards
+function generarExcelSimcards(sims) {
+  const datos = sims.map(s => ({
+    'ID': s.id,
+    'Número': s.numero,
+    'Operador': s.operador || '',
+    'ICCID': s.iccid || '',
+    'Plan': s.plan || '',
+    'Estado': s.estado,
+    'GPS asignado': s.serial_gps || '',
+    'Placa': s.placa_vehiculo || '',
+    'Cliente': s.cliente_nombre || '',
+    'Notas': s.notas || ''
+  }));
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(datos);
+  ws['!cols'] = [{ wch: 6 }, { wch: 16 }, { wch: 14 }, { wch: 22 }, { wch: 16 }, { wch: 12 }, { wch: 16 }, { wch: 12 }, { wch: 26 }, { wch: 24 }];
+  XLSX.utils.book_append_sheet(wb, ws, 'SIM Cards');
+  return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+}
+
 module.exports = {
   generarExcelClientes,
   generarExcelDispositivos,
   generarExcelPagos,
   generarExcelFacturas,
   generarExcelLeads,
-  generarExcelInventario
+  generarExcelInventario,
+  generarExcelContratos,
+  generarExcelSimcards
 };

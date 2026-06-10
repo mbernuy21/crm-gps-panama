@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import api from '../services/api';
+import ExportButton from '../components/ExportButton';
 
 const ESTADO_COLORES = {
   disponible: { bg: '#dcfce7', color: '#16a34a', label: 'Disponible', icono: '🟢' },
@@ -100,6 +101,7 @@ export default function Simcards() {
           <p style={{ color: 'var(--gris)', fontSize: '13px' }}>Control de líneas con contrato — disponibles vs. asignadas</p>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <ExportButton modulo="simcards" label="📊 Excel" />
           <button onClick={() => setModalImport(true)}
             style={{ background: '#16a34a', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 16px', fontWeight: 600, cursor: 'pointer', fontSize: '13px' }}>
             📥 Importar lista

@@ -9,7 +9,9 @@ const {
   generarExcelPagos,
   generarExcelFacturas,
   generarExcelLeads,
-  generarExcelInventario
+  generarExcelInventario,
+  generarExcelContratos,
+  generarExcelSimcards
 } = require('../services/exportExcel');
 
 router.use(authMiddleware);
@@ -135,6 +137,41 @@ router.get('/inventario', async (req, res) => {
   } catch (err) {
     console.error('Error exportando inventario:', err);
     res.status(500).json({ success: false, message: 'Error exportando inventario' });
+  }
+});
+
+// GET /api/exportar/contratos
+router.get('/contratos', async (req, res) => {
+  try {
+    const [contratos] = await db.query(`
+      SELECT con.*, c.nombre_razon_social AS cliente_nombre, c.estado AS cliente_estado,
+        DATEDIFF(con.fecha_proximo_pago, CURDATE()) AS dias_para_vencer
+      FROM contratos con INNER JOIN clientes c ON c.id = con.cliente_id
+      ORDER BY con.fecha_proximo_pago ASC
+    `);
+    const buffer = generarExcelContratos(contratos);
+    enviarExcel(res, buffer, 'contratos');
+  } catch (err) {
+    console.error('Error exportando contratos:', err);
+    res.status(500).json({ success: false, message: 'Error exportando contratos' });
+  }
+});
+
+// GET /api/exportar/simcards
+router.get('/simcards', async (req, res) => {
+  try {
+    const [sims] = await db.query(`
+      SELECT s.*, d.serial_gps, d.placa_vehiculo, c.nombre_razon_social AS cliente_nombre
+      FROM simcards s
+      LEFT JOIN dispositivos d ON d.id = s.dispositivo_id
+      LEFT JOIN clientes c ON c.id = s.cliente_id
+      ORDER BY s.numero ASC
+    `);
+    const buffer = generarExcelSimcards(sims);
+    enviarExcel(res, buffer, 'simcards');
+  } catch (err) {
+    console.error('Error exportando simcards:', err);
+    res.status(500).json({ success: false, message: 'Error exportando SIM cards' });
   }
 });
 

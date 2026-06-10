@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import api from '../services/api';
 import AlertaBadge from '../components/AlertaBadge';
+import ExportButton from '../components/ExportButton';
 
 function ModalContrato({ contrato, clientes, onGuardar, onCerrar }) {
   const hoy = new Date().toISOString().split('T')[0];
@@ -103,20 +104,54 @@ function ModalContrato({ contrato, clientes, onGuardar, onCerrar }) {
 export default function Contratos() {
   const [contratos, setContratos] = useState([]);
   const [clientes, setClientes] = useState([]);
+  const [plantillas, setPlantillas] = useState([]);
   const [modal, setModal] = useState(null);
   const [cargando, setCargando] = useState(true);
 
   function cargar() {
     setCargando(true);
-    Promise.all([api.get('/contratos'), api.get('/clientes?limit=500')])
-      .then(([c, cl]) => {
+    Promise.all([api.get('/contratos'), api.get('/clientes?limit=500'), api.get('/plantillas')])
+      .then(([c, cl, pl]) => {
         setContratos(c.data.data);
         setClientes(cl.data.data);
+        setPlantillas(pl.data.data || []);
         setCargando(false);
       }).catch(() => setCargando(false));
   }
 
   useEffect(() => { cargar(); }, []);
+
+  // Enviar recordatorio de pago por WhatsApp usando la plantilla adecuada
+  function enviarRecordatorio(c) {
+    const numero = (c.cliente_whatsapp || '').replace(/\D/g, '');
+    if (!numero) { toast.warning('Este cliente no tiene WhatsApp registrado'); return; }
+    const telefono = numero.startsWith('507') ? numero : `507${numero}`;
+
+    // Elegir tipo de plantilla según el vencimiento
+    const vencido = c.dias_para_vencer < 0;
+    const tipoBuscado = vencido ? 'mora' : 'recordatorio';
+    const plantilla = plantillas.find(p => p.tipo === tipoBuscado && p.activa) || plantillas.find(p => p.activa);
+
+    let mensaje;
+    const monto = parseFloat(c.monto_total).toFixed(2);
+    const fechaVenc = new Date(c.fecha_proximo_pago).toLocaleDateString('es-PA');
+    const diasMora = vencido ? Math.abs(c.dias_para_vencer) : 0;
+
+    if (plantilla) {
+      mensaje = plantilla.contenido
+        .replaceAll('[nombre_cliente]', c.cliente_nombre || '')
+        .replaceAll('[monto]', monto)
+        .replaceAll('[fecha_vencimiento]', fechaVenc)
+        .replaceAll('[dias_mora]', diasMora)
+        .replaceAll('[empresa]', 'GPS Tracker Panamá');
+    } else {
+      // Fallback si no hay plantillas configuradas
+      mensaje = vencido
+        ? `Estimado/a ${c.cliente_nombre}, su pago de B/.${monto} venció hace ${diasMora} días. Le pedimos regularizarlo para evitar la suspensión del servicio. GPS Tracker Panamá.`
+        : `Estimado/a ${c.cliente_nombre}, le recordamos que su pago de B/.${monto} vence el ${fechaVenc}. Gracias por su preferencia. GPS Tracker Panamá.`;
+    }
+    window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`, '_blank');
+  }
 
   async function eliminar(id) {
     if (!window.confirm('¿Eliminar este contrato?')) return;
@@ -139,10 +174,13 @@ export default function Contratos() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1 style={{ fontSize: '22px', fontWeight: 700 }}>Contratos</h1>
-        <button onClick={() => setModal({})}
-          style={{ padding: '8px 18px', background: 'var(--azul)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
-          + Nuevo contrato
-        </button>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <ExportButton modulo="contratos" label="📊 Exportar Excel" />
+          <button onClick={() => setModal({})}
+            style={{ padding: '8px 18px', background: 'var(--azul)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
+            + Nuevo contrato
+          </button>
+        </div>
       </div>
 
       <div style={{ background: 'white', borderRadius: 'var(--radio)', boxShadow: 'var(--sombra)', overflow: 'hidden' }}>
@@ -174,6 +212,11 @@ export default function Contratos() {
                 <td style={{ padding: '10px 14px' }}><AlertaBadge estado={c.estado} /></td>
                 <td style={{ padding: '10px 14px' }}>
                   <div style={{ display: 'flex', gap: '6px' }}>
+                    <button onClick={() => enviarRecordatorio(c)}
+                      title={c.dias_para_vencer < 0 ? 'Enviar aviso de mora' : 'Enviar recordatorio de pago'}
+                      style={{ padding: '4px 10px', background: '#25d366', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>
+                      💬 {c.dias_para_vencer < 0 ? 'Mora' : 'Recordar'}
+                    </button>
                     <button onClick={() => setModal(c)}
                       style={{ padding: '4px 10px', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
                       Editar

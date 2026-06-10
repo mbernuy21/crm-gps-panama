@@ -11,10 +11,14 @@ const TIPO_COLORES = {
   reactivacion: { bg: '#dcfce7', color: '#166534', label: 'Reactivación' },
 };
 
+const TIPOS_NUEVA = ['personalizada', 'recordatorio', 'mora', 'suspension', 'reactivacion', 'cobro', 'bienvenida'];
+
 export default function Plantillas() {
   const [plantillas, setPlantillas] = useState([]);
   const [editando, setEditando] = useState(null);
   const [preview, setPreview] = useState({ nombre_cliente: 'Juan Rodríguez', monto: '60.00', dias_mora: '5', fecha_vencimiento: '15/07/2024', empresa: 'GPS Tracker Panamá' });
+  const [modalNueva, setModalNueva] = useState(false);
+  const [nueva, setNueva] = useState({ nombre: '', tipo: 'personalizada', contenido: '' });
 
   function cargar() {
     api.get('/plantillas').then(r => setPlantillas(r.data.data));
@@ -31,6 +35,23 @@ export default function Plantillas() {
     } catch (err) {
       toast.error('Error guardando plantilla');
     }
+  }
+
+  async function crearPlantilla() {
+    if (!nueva.nombre.trim() || !nueva.contenido.trim()) return toast.error('Nombre y contenido requeridos');
+    try {
+      await api.post('/plantillas', nueva);
+      toast.success('Plantilla creada');
+      setModalNueva(false);
+      setNueva({ nombre: '', tipo: 'personalizada', contenido: '' });
+      cargar();
+    } catch { toast.error('Error creando plantilla'); }
+  }
+
+  async function eliminarPlantilla(id) {
+    if (!window.confirm('¿Eliminar esta plantilla?')) return;
+    try { await api.delete(`/plantillas/${id}`); toast.success('Plantilla eliminada'); cargar(); }
+    catch { toast.error('Error eliminando'); }
   }
 
   function resolverVariables(texto) {
@@ -50,12 +71,45 @@ export default function Plantillas() {
 
   return (
     <div>
-      <div style={{ marginBottom: '20px' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, marginBottom: '4px' }}>Plantillas de WhatsApp</h1>
-        <p style={{ color: 'var(--gris)', fontSize: '13px' }}>
-          Edita el contenido de cada plantilla. Los botones de acción usan estas plantillas para generar los mensajes.
-        </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
+        <div>
+          <h1 style={{ fontSize: '22px', fontWeight: 700, marginBottom: '4px' }}>Plantillas de WhatsApp</h1>
+          <p style={{ color: 'var(--gris)', fontSize: '13px' }}>
+            Edita o crea plantillas. Se usan en Contratos, Cobros y Alertas para generar los mensajes.
+          </p>
+        </div>
+        <button onClick={() => setModalNueva(true)}
+          style={{ padding: '10px 18px', background: 'var(--azul)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
+          + Nueva plantilla
+        </button>
       </div>
+
+      {/* Modal nueva plantilla */}
+      {modalNueva && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '24px 16px' }}
+          onClick={e => e.target === e.currentTarget && setModalNueva(false)}>
+          <div style={{ background: 'white', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '520px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Nueva plantilla</h2>
+            <label style={{ fontSize: '13px', fontWeight: 500, display: 'block', marginBottom: '5px' }}>Nombre</label>
+            <input value={nueva.nombre} onChange={e => setNueva({ ...nueva, nombre: e.target.value })}
+              placeholder="Ej: Recordatorio cobro mensual"
+              style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--borde)', borderRadius: '8px', fontSize: '14px', marginBottom: '12px', boxSizing: 'border-box' }} />
+            <label style={{ fontSize: '13px', fontWeight: 500, display: 'block', marginBottom: '5px' }}>Tipo</label>
+            <select value={nueva.tipo} onChange={e => setNueva({ ...nueva, tipo: e.target.value })}
+              style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--borde)', borderRadius: '8px', fontSize: '14px', marginBottom: '12px' }}>
+              {TIPOS_NUEVA.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <label style={{ fontSize: '13px', fontWeight: 500, display: 'block', marginBottom: '5px' }}>Contenido (usa las variables [nombre_cliente], [monto], etc.)</label>
+            <textarea rows={5} value={nueva.contenido} onChange={e => setNueva({ ...nueva, contenido: e.target.value })}
+              placeholder="Estimado/a [nombre_cliente], ..."
+              style={{ width: '100%', padding: '10px', border: '1px solid var(--borde)', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box', lineHeight: 1.6 }} />
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button onClick={() => setModalNueva(false)} style={{ flex: 1, padding: '11px', background: '#f3f4f6', border: '1px solid var(--borde)', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>Cancelar</button>
+              <button onClick={crearPlantilla} style={{ flex: 1, padding: '11px', background: 'var(--azul)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>Crear</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Variables disponibles */}
       <div style={{ background: 'var(--azul-light)', borderRadius: 'var(--radio)', padding: '14px 18px', marginBottom: '24px' }}>
@@ -108,6 +162,10 @@ export default function Plantillas() {
                   <button onClick={() => setEditando(estaEditando ? null : { ...p })}
                     style={{ padding: '5px 12px', background: estaEditando ? '#fee2e2' : 'var(--azul-light)', color: estaEditando ? '#dc2626' : 'var(--azul)', border: 'none', borderRadius: '7px', cursor: 'pointer', fontSize: '12px', fontWeight: 500 }}>
                     {estaEditando ? 'Cancelar' : 'Editar'}
+                  </button>
+                  <button onClick={() => eliminarPlantilla(p.id)} title="Eliminar plantilla"
+                    style={{ padding: '5px 10px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '7px', cursor: 'pointer', fontSize: '12px', fontWeight: 500 }}>
+                    🗑️
                   </button>
                 </div>
               </div>
