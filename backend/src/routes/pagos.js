@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const { authMiddleware } = require('../middleware/auth');
+const auditoria = require('../services/auditoria');
 
 router.use(authMiddleware);
 
@@ -83,6 +84,7 @@ router.post('/', async (req, res) => {
       [result.insertId]
     );
 
+    await auditoria.registrar(req, 'crear', 'pago', result.insertId, `Registró pago de B/. ${parseFloat(monto).toFixed(2)} de "${nuevo.cliente_nombre}"`);
     res.status(201).json({ success: true, data: nuevo, message: 'Pago registrado correctamente' });
   } catch (err) {
     console.error('Error registrando pago:', err);

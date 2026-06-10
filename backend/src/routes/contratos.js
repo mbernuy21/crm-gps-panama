@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const { authMiddleware } = require('../middleware/auth');
+const auditoria = require('../services/auditoria');
 
 router.use(authMiddleware);
 
@@ -80,6 +81,7 @@ router.post('/', async (req, res) => {
     );
 
     const [[nuevo]] = await db.query('SELECT * FROM contratos WHERE id = ?', [result.insertId]);
+    await auditoria.registrar(req, 'crear', 'contrato', result.insertId, `Creó contrato ${frecuencia || 'mensual'} de B/. ${parseFloat(monto_total).toFixed(2)}`);
     res.status(201).json({ success: true, data: nuevo, message: 'Contrato creado correctamente' });
   } catch (err) {
     console.error('Error creando contrato:', err);
@@ -104,6 +106,7 @@ router.put('/:id', async (req, res) => {
     );
 
     const [[actualizado]] = await db.query('SELECT * FROM contratos WHERE id = ?', [id]);
+    await auditoria.registrar(req, 'editar', 'contrato', id, `Editó contrato (${frecuencia}, B/. ${parseFloat(monto_total).toFixed(2)})`);
     res.json({ success: true, data: actualizado, message: 'Contrato actualizado correctamente' });
   } catch (err) {
     console.error('Error actualizando contrato:', err);

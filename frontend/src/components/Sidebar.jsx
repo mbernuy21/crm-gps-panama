@@ -26,11 +26,13 @@ const menu = [
   // ── INVENTARIO / GPS ──────────────────────────────
   { sep: 'Equipos' },
   { path: '/dispositivos', label: 'Dispositivos GPS', icono: '📡' },
+  { path: '/simcards',     label: 'SIM Cards',        icono: '📱' },
   { path: '/inventario',   label: 'Inventario',       icono: '📦' },
 
   // ── HERRAMIENTAS ──────────────────────────────────
   { sep: 'Herramientas' },
   { path: '/asistente',    label: 'Asistente IA',     icono: '🤖' },
+  { path: '/auditoria',    label: 'Auditoría',        icono: '🛡️' },
   { path: '/guia',         label: 'Guía del CRM',     icono: '📘' },
 ];
 

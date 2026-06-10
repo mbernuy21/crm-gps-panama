@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const { authMiddleware } = require('../middleware/auth');
+const auditoria = require('../services/auditoria');
 
 router.use(authMiddleware);
 
@@ -130,6 +131,7 @@ router.post('/', async (req, res) => {
     );
 
     const [[nuevo]] = await db.query('SELECT * FROM clientes WHERE id = ?', [result.insertId]);
+    await auditoria.registrar(req, 'crear', 'cliente', result.insertId, `Creó el cliente "${nombre_razon_social}"`);
     res.status(201).json({ success: true, data: nuevo, message: 'Cliente creado correctamente' });
   } catch (err) {
     console.error('Error creando cliente:', err);
@@ -161,6 +163,7 @@ router.put('/:id', async (req, res) => {
     );
 
     const [[actualizado]] = await db.query('SELECT * FROM clientes WHERE id = ?', [id]);
+    await auditoria.registrar(req, 'editar', 'cliente', id, `Editó el cliente "${nombre_razon_social}"`);
     res.json({ success: true, data: actualizado, message: 'Cliente actualizado correctamente' });
   } catch (err) {
     console.error('Error actualizando cliente:', err);
@@ -189,6 +192,7 @@ router.put('/:id/estado', async (req, res) => {
       );
     }
 
+    await auditoria.registrar(req, 'cambiar_estado', 'cliente', id, `Cambió estado del cliente a "${estado}"`);
     res.json({ success: true, message: `Estado actualizado a: ${estado}` });
   } catch (err) {
     console.error('Error cambiando estado:', err);

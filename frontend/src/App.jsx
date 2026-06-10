@@ -19,6 +19,8 @@ import Plantillas from './pages/Plantillas';
 import Cotizaciones from './pages/Cotizaciones';
 import CotizacionForm from './pages/CotizacionForm';
 import Tareas from './pages/Tareas';
+import Simcards from './pages/Simcards';
+import Auditoria from './pages/Auditoria';
 import AsistenteIA from './pages/AsistenteIA';
 import Guia from './pages/Guia';
 
@@ -58,6 +60,8 @@ export default function App() {
           <Route path="cotizaciones/nueva" element={<CotizacionForm />} />
           <Route path="cotizaciones/:id/editar" element={<CotizacionForm />} />
           <Route path="tareas" element={<Tareas />} />
+          <Route path="simcards" element={<Simcards />} />
+          <Route path="auditoria" element={<Auditoria />} />
           <Route path="asistente" element={<AsistenteIA />} />
           <Route path="guia" element={<Guia />} />
         </Route>

@@ -255,3 +255,41 @@ CREATE TABLE IF NOT EXISTS tareas (
   INDEX idx_fecha_limite (fecha_limite)
 );
 
+
+-- ------------------------------------------------------------
+-- Tabla: auditoria (registro de quién crea/edita/elimina cada dato)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS auditoria (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  usuario_id INT NULL,
+  usuario_nombre VARCHAR(150),
+  accion ENUM('crear', 'editar', 'eliminar', 'cambiar_estado') NOT NULL,
+  entidad VARCHAR(50) NOT NULL,
+  entidad_id INT,
+  descripcion VARCHAR(500),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+  INDEX idx_entidad (entidad, entidad_id),
+  INDEX idx_created (created_at)
+);
+
+-- ------------------------------------------------------------
+-- Tabla: simcards (líneas/SIM con contrato, asignables a dispositivos)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS simcards (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  numero VARCHAR(30) NOT NULL,
+  operador VARCHAR(50),
+  iccid VARCHAR(50),
+  plan VARCHAR(100),
+  estado ENUM('disponible', 'asignada', 'suspendida', 'duplicada', 'baja') NOT NULL DEFAULT 'disponible',
+  dispositivo_id INT NULL,
+  cliente_id INT NULL,
+  notas TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (dispositivo_id) REFERENCES dispositivos(id) ON DELETE SET NULL,
+  FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL,
+  INDEX idx_estado (estado),
+  INDEX idx_numero (numero)
+);

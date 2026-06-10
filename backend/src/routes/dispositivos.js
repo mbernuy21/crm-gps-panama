@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const { authMiddleware } = require('../middleware/auth');
+const auditoria = require('../services/auditoria');
 
 router.use(authMiddleware);
 
@@ -116,6 +117,14 @@ router.post('/', async (req, res) => {
     }
 
     const [[nuevo]] = await db.query('SELECT * FROM dispositivos WHERE id = ?', [result.insertId]);
+    // Si trae SIM, marcarla como asignada en el módulo de SIMcards (si existe ese registro)
+    if (simLimpia) {
+      await db.query(
+        `UPDATE simcards SET estado='asignada', dispositivo_id=?, cliente_id=? WHERE numero=? AND estado!='asignada'`,
+        [result.insertId, cliente_id || null, simLimpia]
+      ).catch(() => {});
+    }
+    await auditoria.registrar(req, 'crear', 'dispositivo', result.insertId, `Creó GPS serial "${serial_gps}"${placa_vehiculo ? ` (placa ${placa_vehiculo})` : ''}`);
     res.status(201).json({ success: true, data: nuevo, message: 'Dispositivo creado correctamente' });
   } catch (err) {
     console.error('Error creando dispositivo:', err);
@@ -166,7 +175,15 @@ router.put('/:id', async (req, res) => {
       );
     }
 
+    // Sincronizar SIM con módulo de SIMcards: liberar la anterior, asignar la nueva
+    if (actual.simcard && actual.simcard !== simLimpia) {
+      await db.query(`UPDATE simcards SET estado='disponible', dispositivo_id=NULL, cliente_id=NULL WHERE numero=?`, [actual.simcard]).catch(() => {});
+    }
+    if (simLimpia) {
+      await db.query(`UPDATE simcards SET estado='asignada', dispositivo_id=?, cliente_id=? WHERE numero=?`, [id, cliente_id || null, simLimpia]).catch(() => {});
+    }
     const [[actualizado]] = await db.query('SELECT * FROM dispositivos WHERE id = ?', [id]);
+    await auditoria.registrar(req, 'editar', 'dispositivo', id, `Editó GPS serial "${serial_gps}"`);
     res.json({ success: true, data: actualizado, message: 'Dispositivo actualizado correctamente' });
   } catch (err) {
     console.error('Error actualizando dispositivo:', err);
