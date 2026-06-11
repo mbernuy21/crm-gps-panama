@@ -51,6 +51,46 @@ function KpiCard({ icono, titulo, valor, sub, color = 'var(--azul)', onClick }) 
   );
 }
 
+// Tarjeta KPI destacada — fondo en degradado de color, alto impacto visual
+function KpiHero({ icono, titulo, valor, sub, gradiente, onClick }) {
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        position: 'relative',
+        borderRadius: '16px',
+        padding: '22px',
+        background: gradiente,
+        boxShadow: '0 10px 24px -8px rgba(16,24,40,0.30)',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'box-shadow 0.2s ease, transform 0.2s ease',
+        overflow: 'hidden'
+      }}
+      onMouseEnter={e => { if (onClick) { e.currentTarget.style.boxShadow = '0 16px 32px -8px rgba(16,24,40,0.42)'; e.currentTarget.style.transform = 'translateY(-3px)'; } }}
+      onMouseLeave={e => { if (onClick) { e.currentTarget.style.boxShadow = '0 10px 24px -8px rgba(16,24,40,0.30)'; e.currentTarget.style.transform = 'translateY(0)'; } }}
+    >
+      {/* Círculo decorativo de fondo */}
+      <div style={{ position: 'absolute', top: '-28px', right: '-28px', width: '110px', height: '110px', borderRadius: '50%', background: 'rgba(255,255,255,0.12)' }} />
+      <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.85)', fontWeight: 600, marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{titulo}</p>
+          <p style={{ fontSize: '32px', fontWeight: 800, color: 'white', lineHeight: 1.05 }}>{valor}</p>
+          {sub && <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.85)', marginTop: '6px' }}>{sub}</p>}
+        </div>
+        <span style={{
+          fontSize: '22px',
+          width: '46px', height: '46px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          borderRadius: '12px',
+          background: 'rgba(255,255,255,0.22)',
+          backdropFilter: 'blur(4px)',
+          flexShrink: 0
+        }}>{icono}</span>
+      </div>
+    </div>
+  );
+}
+
 // Fila del resumen financiero
 function ResumenFila({ label, valor, color }) {
   return (
@@ -179,17 +219,20 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* KPIs */}
+      {/* KPIs principales — tarjetas destacadas con degradado */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <KpiCard icono="👥" titulo="Clientes activos" valor={kpis.clientes_activos} color="#22c55e" onClick={() => navigate('/clientes?estado=activo')} />
-        <KpiCard icono="⚠️" titulo="Clientes morosos" valor={kpis.clientes_morosos} color="#f59e0b" onClick={() => navigate('/clientes?estado=moroso')} />
-        <KpiCard icono="🎯" titulo="Leads activos" valor={kpis.leads_activos} color="#8b5cf6" onClick={() => navigate('/leads')} />
-        <KpiCard
+        <KpiHero icono="👥" titulo="Clientes activos" valor={kpis.clientes_activos}
+          gradiente="linear-gradient(135deg, #16a34a 0%, #22c55e 100%)" onClick={() => navigate('/clientes?estado=activo')} />
+        <KpiHero icono="⚠️" titulo="Clientes morosos" valor={kpis.clientes_morosos}
+          gradiente="linear-gradient(135deg, #d97706 0%, #f59e0b 100%)" onClick={() => navigate('/clientes?estado=moroso')} />
+        <KpiHero icono="🎯" titulo="Leads activos" valor={kpis.leads_activos}
+          gradiente="linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)" onClick={() => navigate('/leads')} />
+        <KpiHero
           icono="💰"
           titulo="Cobros este mes"
           valor={`B/. ${parseFloat(kpis.cobros_mes_actual || 0).toLocaleString('es-PA', { minimumFractionDigits: 2 })}`}
           sub={kpis.cobros_mes_anterior > 0 ? `Mes anterior: B/. ${parseFloat(kpis.cobros_mes_anterior).toLocaleString('es-PA', { minimumFractionDigits: 2 })}` : ''}
-          color="#4F6EF7"
+          gradiente="linear-gradient(135deg, #3d5ce0 0%, #4F6EF7 100%)"
           onClick={() => navigate('/pagos')}
         />
       </div>
