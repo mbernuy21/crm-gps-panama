@@ -4,9 +4,14 @@
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  background-color: #f4f6fb;
+  /* Fondo con sutil profundidad en vez de color plano */
+  background-color: #eef1f8;
+  background-image: radial-gradient(1200px 600px at 100% -10%, #e7ecfb 0%, transparent 55%),
+                    radial-gradient(900px 500px at -10% 110%, #eaf0fc 0%, transparent 50%);
+  background-attachment: fixed;
   color: #1a1a2e;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 :root {
@@ -19,10 +24,55 @@ body {
   --naranja: #f97316;
   --gris: #6b7280;
   --gris-light: #f4f6fb;
-  --borde: #e5e7eb;
-  --sombra: 0 1px 3px rgba(0,0,0,0.08);
-  --sombra-md: 0 4px 12px rgba(0,0,0,0.1);
-  --radio: 10px;
+  --borde: #e8ebf2;
+  /* Sombras refinadas, multicapa, estilo dashboard moderno */
+  --sombra: 0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06);
+  --sombra-md: 0 2px 4px rgba(16,24,40,0.05), 0 8px 24px -6px rgba(16,24,40,0.12);
+  --sombra-lg: 0 12px 40px -8px rgba(16,24,40,0.18);
+  --radio: 12px;
+  --radio-sm: 8px;
+}
+
+/* ══════════════════════════════════════════════════════
+   PULIDO GLOBAL — mejoras visuales que aplican a todo el CRM
+   ══════════════════════════════════════════════════════ */
+
+/* Transiciones suaves en elementos interactivos */
+button, a, select, input, textarea, [role="button"] {
+  transition: background-color 0.18s ease, border-color 0.18s ease,
+              box-shadow 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+/* Botones: realce sutil al pasar el mouse y al presionar */
+button:not(:disabled):hover { filter: brightness(0.97); }
+button:not(:disabled):active { transform: translateY(0.5px); }
+button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Filas de tabla: resaltado al pasar el mouse (efecto recomendado dashboard) */
+tbody tr { transition: background-color 0.14s ease; }
+tbody tr:hover { background-color: rgba(79,110,247,0.045); }
+
+/* Encabezados con mejor jerarquía tipográfica */
+h1 { letter-spacing: -0.02em; }
+h2, h3 { letter-spacing: -0.01em; }
+
+/* Foco visible accesible (teclado) — anillo azul consistente */
+a:focus-visible, button:focus-visible, select:focus-visible,
+input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--azul);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+/* Inputs enfocados: borde azul + halo suave */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--azul) !important;
+  box-shadow: 0 0 0 3px rgba(79,110,247,0.15);
+}
+
+/* Respetar usuarios que prefieren menos movimiento */
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
 
 /* Scrollbar personalizado */
@@ -113,6 +163,19 @@ body.dark [style*="border-right: 1px solid var(--borde)"] { border-color: #30363
 body.dark ::-webkit-scrollbar-track { background: #161b22; }
 body.dark ::-webkit-scrollbar-thumb { background: #30363d; }
 body.dark ::-webkit-scrollbar-thumb:hover { background: #484f58; }
+
+/* Fondo oscuro: quitar el gradiente claro */
+body.dark {
+  background-image: none;
+}
+
+/* Filas de tabla en dark: resaltado azul tenue */
+body.dark tbody tr:hover { background-color: rgba(79,110,247,0.10) !important; }
+
+/* Halo de foco en inputs (dark) */
+body.dark input:focus, body.dark select:focus, body.dark textarea:focus {
+  box-shadow: 0 0 0 3px rgba(79,110,247,0.25);
+}
 
 /* ============================================================
    RESPONSIVE MÓVIL — mejoras de navegación en celular

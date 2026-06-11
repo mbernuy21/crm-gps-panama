@@ -17,24 +17,35 @@ function KpiCard({ icono, titulo, valor, sub, color = 'var(--azul)', onClick }) 
     <div
       onClick={onClick}
       style={{
+        position: 'relative',
         background: 'white',
         borderRadius: 'var(--radio)',
         padding: '20px',
         boxShadow: 'var(--sombra)',
+        border: '1px solid var(--borde)',
         cursor: onClick ? 'pointer' : 'default',
         borderLeft: `4px solid ${color}`,
-        transition: 'box-shadow 0.2s'
+        transition: 'box-shadow 0.2s ease, transform 0.2s ease',
+        overflow: 'hidden'
       }}
-      onMouseEnter={e => onClick && (e.currentTarget.style.boxShadow = 'var(--sombra-md)')}
-      onMouseLeave={e => onClick && (e.currentTarget.style.boxShadow = 'var(--sombra)')}
+      onMouseEnter={e => { if (onClick) { e.currentTarget.style.boxShadow = 'var(--sombra-md)'; e.currentTarget.style.transform = 'translateY(-2px)'; } }}
+      onMouseLeave={e => { if (onClick) { e.currentTarget.style.boxShadow = 'var(--sombra)'; e.currentTarget.style.transform = 'translateY(0)'; } }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <p style={{ fontSize: '12px', color: 'var(--gris)', fontWeight: 500, marginBottom: '6px' }}>{titulo}</p>
-          <p style={{ fontSize: '28px', fontWeight: 700, color: '#1a1a2e' }}>{valor}</p>
-          {sub && <p style={{ fontSize: '11px', color: 'var(--gris)', marginTop: '4px' }}>{sub}</p>}
+          <p style={{ fontSize: '12px', color: 'var(--gris)', fontWeight: 600, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{titulo}</p>
+          <p style={{ fontSize: '30px', fontWeight: 700, color: '#0f172a', lineHeight: 1.1 }}>{valor}</p>
+          {sub && <p style={{ fontSize: '11px', color: 'var(--gris)', marginTop: '6px' }}>{sub}</p>}
         </div>
-        <span style={{ fontSize: '28px' }}>{icono}</span>
+        {/* Ícono dentro de un círculo de color tenue */}
+        <span style={{
+          fontSize: '20px',
+          width: '42px', height: '42px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          borderRadius: '10px',
+          background: typeof color === 'string' && color.startsWith('var') ? 'var(--azul-light)' : `${color}1a`,
+          flexShrink: 0
+        }}>{icono}</span>
       </div>
     </div>
   );
