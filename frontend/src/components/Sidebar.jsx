@@ -36,8 +36,15 @@ const menu = [
   { path: '/guia',         label: 'Guía del CRM',     icono: '📘' },
 ];
 
-export default function Sidebar({ abierto, onCerrar, onNavegar, darkMode, toggleDark }) {
+export default function Sidebar({ abierto, onCerrar, onNavegar, darkMode, toggleDark, fontScale = '1', setFontScale }) {
   const navigate = useNavigate();
+
+  // Opciones de tamaño de letra (escala todo el CRM)
+  const TAMANOS = [
+    { val: '1',    label: 'A', size: '12px', nombre: 'Normal' },
+    { val: '1.15', label: 'A', size: '15px', nombre: 'Mediana' },
+    { val: '1.3',  label: 'A', size: '18px', nombre: 'Grande' },
+  ];
 
   function cerrarSesion() {
     localStorage.removeItem('token');
@@ -131,8 +138,42 @@ export default function Sidebar({ abierto, onCerrar, onNavegar, darkMode, toggle
         })}
       </nav>
 
-      {/* Footer del sidebar: dark mode + cerrar sesión */}
+      {/* Footer del sidebar: tamaño de letra + dark mode + cerrar sesión */}
       <div style={{ padding: '12px 16px', borderTop: `1px solid ${sidebarBorde}`, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {/* Control de tamaño de letra (accesibilidad) */}
+        <div>
+          <div style={{ fontSize: '11px', fontWeight: 600, color: darkMode ? '#8b949e' : '#9ca3af', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Tamaño de letra
+          </div>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {TAMANOS.map(t => {
+              const activo = fontScale === t.val;
+              return (
+                <button
+                  key={t.val}
+                  onClick={() => setFontScale && setFontScale(t.val)}
+                  title={t.nombre}
+                  style={{
+                    flex: 1,
+                    padding: '8px 0',
+                    background: activo ? 'var(--azul)' : (darkMode ? '#21262d' : '#f3f4f6'),
+                    color: activo ? 'white' : (darkMode ? '#c9d1d9' : '#374151'),
+                    border: `1px solid ${activo ? 'var(--azul)' : sidebarBorde}`,
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    fontSize: t.size,
+                    lineHeight: 1,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Botón Dark Mode */}
         <button
           onClick={toggleDark}

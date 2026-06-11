@@ -9,6 +9,8 @@ export default function Layout() {
   // En desktop el sidebar arranca abierto; en móvil arranca cerrado
   const [sidebarAbierto, setSidebarAbierto] = useState(() => window.innerWidth >= 768);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
+  // Tamaño de letra elegido por el usuario (se guarda en el dispositivo)
+  const [fontScale, setFontScale] = useState(() => localStorage.getItem('fontScale') || '1');
 
   // Escuchar cambios de tamaño de pantalla
   useEffect(() => {
@@ -29,6 +31,12 @@ export default function Layout() {
     localStorage.setItem('darkMode', darkMode);
   }, [darkMode]);
 
+  // Aplicar el tamaño de letra a todo el CRM (zoom escala también los px en línea)
+  useEffect(() => {
+    document.documentElement.style.zoom = fontScale;
+    localStorage.setItem('fontScale', fontScale);
+  }, [fontScale]);
+
   function toggleDark() { setDarkMode(prev => !prev); }
   function cerrarSidebar() { setSidebarAbierto(false); }
   // Al navegar en móvil, cerrar el sidebar automáticamente
@@ -42,6 +50,8 @@ export default function Layout() {
         onNavegar={alNavegar}
         darkMode={darkMode}
         toggleDark={toggleDark}
+        fontScale={fontScale}
+        setFontScale={setFontScale}
       />
 
       {/* Fondo oscuro detrás del sidebar en móvil */}
