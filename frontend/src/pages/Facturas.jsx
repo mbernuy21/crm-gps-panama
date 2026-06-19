@@ -112,6 +112,7 @@ export default function Facturas() {
   const [facturas, setFacturas] = useState([]);
   const [modal, setModal] = useState(false);
   const [cargando, setCargando] = useState(true);
+  const [buscar, setBuscar] = useState('');
 
   function cargar() {
     setCargando(true);
@@ -130,6 +131,21 @@ export default function Facturas() {
     }
   }
 
+  async function eliminarFactura(f) {
+    if (f.estado === 'pagada') {
+      toast.warning('No puedes eliminar una factura pagada. Anúlala primero.');
+      return;
+    }
+    if (!window.confirm(`¿Eliminar la factura ${f.numero_factura} de "${f.cliente_nombre}"? Esta acción no se puede deshacer.`)) return;
+    try {
+      await api.delete(`/facturas/${f.id}`);
+      toast.success('Factura eliminada correctamente');
+      cargar();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error eliminando factura');
+    }
+  }
+
   async function descargarPDF(id, numero) {
     try {
       const resp = await api.get(`/facturas/${id}/pdf`, { responseType: 'blob' });
@@ -143,17 +159,50 @@ export default function Facturas() {
     }
   }
 
+  const facturasFiltradas = facturas.filter(f => {
+    if (!buscar.trim()) return true;
+    const q = buscar.toLowerCase();
+    return (
+      (f.numero_factura || '').toLowerCase().includes(q) ||
+      (f.cliente_nombre || '').toLowerCase().includes(q) ||
+      (f.estado || '').toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
         <h1 style={{ fontSize: '22px', fontWeight: 700 }}>Facturas</h1>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <ExportButton modulo="facturas" />
           <button onClick={() => setModal(true)}
             style={{ padding: '8px 18px', background: 'var(--azul)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
             + Nueva factura
           </button>
         </div>
+      </div>
+
+      {/* Buscador */}
+      <div style={{ background: 'white', borderRadius: 'var(--radio)', padding: '14px 16px', marginBottom: '16px', boxShadow: 'var(--sombra)', display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <div style={{ position: 'relative', flex: 1 }}>
+          <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--gris)', fontSize: '14px' }}>🔍</span>
+          <input
+            type="text"
+            placeholder="Buscar por número, cliente, estado..."
+            value={buscar}
+            onChange={e => setBuscar(e.target.value)}
+            style={{ width: '100%', padding: '7px 10px 7px 32px', border: '1px solid var(--borde)', borderRadius: '7px', fontSize: '13px', boxSizing: 'border-box' }}
+          />
+        </div>
+        {buscar && (
+          <button onClick={() => setBuscar('')}
+            style={{ padding: '7px 12px', background: '#f3f4f6', border: '1px solid var(--borde)', borderRadius: '7px', cursor: 'pointer', fontSize: '12px' }}>
+            Limpiar
+          </button>
+        )}
+        <span style={{ fontSize: '12px', color: 'var(--gris)', whiteSpace: 'nowrap' }}>
+          {facturasFiltradas.length} de {facturas.length}
+        </span>
       </div>
 
       <div style={{ background: 'white', borderRadius: 'var(--radio)', boxShadow: 'var(--sombra)', overflow: 'hidden' }}>
@@ -166,7 +215,11 @@ export default function Facturas() {
           <tbody>
             {cargando ? (
               <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: 'var(--gris)' }}>Cargando...</td></tr>
-            ) : facturas.map((f, i) => (
+            ) : facturasFiltradas.length === 0 ? (
+              <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: 'var(--gris)' }}>
+                {buscar ? `Sin resultados para "${buscar}"` : 'Sin facturas registradas'}
+              </td></tr>
+            ) : facturasFiltradas.map((f, i) => (
               <tr key={f.id} style={{ background: i % 2 === 0 ? 'white' : '#fafafa' }}>
                 <td style={{ padding: '10px 14px', fontSize: '13px', fontWeight: 600, color: 'var(--azul)' }}>{f.numero_factura}</td>
                 <td style={{ padding: '10px 14px', fontSize: '13px' }}>{f.cliente_nombre}</td>
@@ -179,10 +232,22 @@ export default function Facturas() {
                   </select>
                 </td>
                 <td style={{ padding: '10px 14px' }}>
-                  <button onClick={() => descargarPDF(f.id, f.numero_factura)}
-                    style={{ padding: '4px 10px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
-                    📄 PDF
-                  </button>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    <button onClick={() => descargarPDF(f.id, f.numero_factura)}
+                      style={{ padding: '4px 10px', background: '#dbeafe', color: '#1d4ed8', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 500 }}>
+                      📄 PDF
+                    </button>
+                    <button onClick={() => eliminarFactura(f)}
+                      title={f.estado === 'pagada' ? 'Anula la factura primero para eliminarla' : 'Eliminar factura'}
+                      style={{
+                        padding: '4px 8px',
+                        background: f.estado === 'pagada' ? '#f3f4f6' : '#fee2e2',
+                        color: f.estado === 'pagada' ? '#9ca3af' : '#dc2626',
+                        border: 'none', borderRadius: '6px', cursor: f.estado === 'pagada' ? 'not-allowed' : 'pointer', fontSize: '12px'
+                      }}>
+                      🗑️
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

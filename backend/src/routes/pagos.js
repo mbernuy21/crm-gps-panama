@@ -92,6 +92,39 @@ router.post('/', async (req, res) => {
   }
 });
 
+// PUT /api/pagos/:id — editar pago existente
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fecha_pago, monto, metodo, link_comprobante, notas } = req.body;
+
+    const [[pago]] = await db.query('SELECT * FROM pagos WHERE id = ?', [id]);
+    if (!pago) return res.status(404).json({ success: false, message: 'Pago no encontrado' });
+
+    if (!fecha_pago || !monto) {
+      return res.status(400).json({ success: false, message: 'fecha_pago y monto son requeridos' });
+    }
+
+    await db.query(
+      `UPDATE pagos SET fecha_pago=?, monto=?, metodo=?, link_comprobante=?, notas=? WHERE id=?`,
+      [fecha_pago, monto, metodo || 'transferencia', link_comprobante || null, notas || null, id]
+    );
+
+    const [[actualizado]] = await db.query(
+      `SELECT p.*, c.nombre_razon_social AS cliente_nombre, u.nombre AS registrado_por_nombre
+       FROM pagos p INNER JOIN clientes c ON c.id = p.cliente_id
+       LEFT JOIN usuarios u ON u.id = p.registrado_por WHERE p.id = ?`,
+      [id]
+    );
+
+    await auditoria.registrar(req, 'editar', 'pago', id, `Editó pago #${id} — B/. ${parseFloat(monto).toFixed(2)}`);
+    res.json({ success: true, data: actualizado, message: 'Pago actualizado correctamente' });
+  } catch (err) {
+    console.error('Error editando pago:', err);
+    res.status(500).json({ success: false, message: 'Error editando pago' });
+  }
+});
+
 // DELETE /api/pagos/:id — anular pago
 router.delete('/:id', async (req, res) => {
   try {

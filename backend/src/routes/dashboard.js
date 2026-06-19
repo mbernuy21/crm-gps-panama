@@ -139,6 +139,49 @@ router.get('/', async (req, res) => {
       return row;
     }, { pendientes: 0, vencidas: 0 });
 
+    // Stats de GPS — distribución por tipo, modalidad y estado
+    const gps_stats = await safeQuery(async () => {
+      const [[row]] = await db.query(`
+        SELECT
+          COUNT(*) AS total_gps,
+          SUM(CASE WHEN estado = 'asignado' THEN 1 ELSE 0 END) AS gps_activos,
+          SUM(CASE WHEN modalidad = 'venta' THEN 1 ELSE 0 END) AS gps_en_venta,
+          SUM(CASE WHEN modalidad = 'alquiler' THEN 1 ELSE 0 END) AS gps_en_alquiler,
+          SUM(CASE WHEN tipo_producto = 'portatil' THEN 1 ELSE 0 END) AS gps_portatiles,
+          SUM(CASE WHEN tipo_producto = 'portatil' AND modalidad = 'alquiler' THEN 1 ELSE 0 END) AS portatiles_alquiler,
+          SUM(CASE WHEN tipo_producto = 'fijo' AND modalidad = 'alquiler' THEN 1 ELSE 0 END) AS fijos_alquiler,
+          SUM(CASE WHEN tipo_producto = 'fijo' AND modalidad = 'venta' THEN 1 ELSE 0 END) AS fijos_venta
+        FROM dispositivos WHERE estado != 'perdido'
+      `);
+      return row;
+    }, { total_gps: 0, gps_activos: 0, gps_en_venta: 0, gps_en_alquiler: 0, gps_portatiles: 0, portatiles_alquiler: 0, fijos_alquiler: 0, fijos_venta: 0 });
+
+    // Líneas SIM activas
+    const sim_stats = await safeQuery(async () => {
+      const [[row]] = await db.query(`
+        SELECT
+          COUNT(*) AS total_sims,
+          SUM(CASE WHEN estado = 'asignada' THEN 1 ELSE 0 END) AS sims_activas,
+          SUM(CASE WHEN estado = 'disponible' THEN 1 ELSE 0 END) AS sims_disponibles
+        FROM simcards
+      `);
+      return row;
+    }, { total_sims: 0, sims_activas: 0, sims_disponibles: 0 });
+
+    // Distribución GPS por plataforma (para gráfica)
+    const gps_por_plataforma = await safeQuery(async () => {
+      const [rows] = await db.query(`
+        SELECT
+          COALESCE(plataforma, 'Sin plataforma') AS plataforma,
+          COUNT(*) AS cantidad
+        FROM dispositivos
+        WHERE estado != 'perdido'
+        GROUP BY plataforma
+        ORDER BY cantidad DESC
+      `);
+      return rows;
+    }, []);
+
     res.json({
       success: true,
       data: {
@@ -151,7 +194,10 @@ router.get('/', async (req, res) => {
         pareto: pareto.slice(0, 20),
         pareto_corte: corte20,
         total_ingresos: totalIngresos,
-        tareas_stats: tareas_stats || { pendientes: 0, vencidas: 0 }
+        tareas_stats: tareas_stats || { pendientes: 0, vencidas: 0 },
+        gps_stats: gps_stats || {},
+        sim_stats: sim_stats || {},
+        gps_por_plataforma: gps_por_plataforma || []
       }
     });
   } catch (err) {

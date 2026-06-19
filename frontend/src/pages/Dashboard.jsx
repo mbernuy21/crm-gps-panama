@@ -12,6 +12,27 @@ import WhatsAppButton from '../components/WhatsAppButton';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend, Title);
 
+// Tarjeta de stat GPS — compacta con ícono y color lateral
+function GpsStat({ icono, label, valor, color = '#4F6EF7', onClick }) {
+  return (
+    <div onClick={onClick} style={{
+      background: 'white', borderRadius: '10px', padding: '14px 16px',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.08)', border: `1px solid ${color}33`,
+      borderLeft: `3px solid ${color}`, cursor: onClick ? 'pointer' : 'default',
+      transition: 'transform 0.15s, box-shadow 0.15s',
+      display: 'flex', alignItems: 'center', gap: '12px'
+    }}
+      onMouseEnter={e => { if (onClick) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)'; }}}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.08)'; }}>
+      <span style={{ fontSize: '22px', flexShrink: 0 }}>{icono}</span>
+      <div>
+        <p style={{ fontSize: '11px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '2px' }}>{label}</p>
+        <p style={{ fontSize: '24px', fontWeight: 800, color, lineHeight: 1.1 }}>{valor}</p>
+      </div>
+    </div>
+  );
+}
+
 function KpiCard({ icono, titulo, valor, sub, color = 'var(--azul)', onClick }) {
   return (
     <div
@@ -145,7 +166,7 @@ export default function Dashboard() {
 
   if (!datos) return null;
 
-  const { kpis, alertas_count, ingresos_mensuales, estados_clientes, ultimos_pagos, alertas_detalle, pareto, pareto_corte, total_ingresos, tareas_stats } = datos;
+  const { kpis, alertas_count, ingresos_mensuales, estados_clientes, ultimos_pagos, alertas_detalle, pareto, pareto_corte, total_ingresos, tareas_stats, gps_stats = {}, sim_stats = {}, gps_por_plataforma = [] } = datos;
   const mob = window.innerWidth < 768;
   const colGraficas = mob ? '1fr' : '2fr 1fr';
   const colDoble = mob ? '1fr' : '1fr 1fr';
@@ -299,6 +320,87 @@ export default function Dashboard() {
             <ResumenFila label="Cobros mes anterior" valor={`B/. ${parseFloat(kpis.cobros_mes_anterior || 0).toLocaleString('es-PA', { minimumFractionDigits: 2 })}`} color="#6b7280" />
             <ResumenFila label="Tareas pendientes" valor={`${tareas_stats?.pendientes || 0}${tareas_stats?.vencidas ? ` (${tareas_stats.vencidas} vencidas)` : ''}`} color="#f59e0b" />
             <ResumenFila label="GPS perdidos" valor={kpis.dispositivos_perdidos || 0} color="#ef4444" />
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ SECCIÓN GPS — Stats de inventario de dispositivos ═══ */}
+      <div style={{ marginBottom: '24px' }}>
+        <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#374151', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          📡 Inventario de GPS
+        </h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+          <GpsStat icono="📡" label="GPS Activos (asignados)" valor={gps_stats.gps_activos || 0} color="#4F6EF7" onClick={() => navigate('/dispositivos')} />
+          <GpsStat icono="🛒" label="GPS en Venta" valor={gps_stats.gps_en_venta || 0} color="#16a34a" onClick={() => navigate('/dispositivos')} />
+          <GpsStat icono="🔄" label="GPS en Alquiler" valor={gps_stats.gps_en_alquiler || 0} color="#7c3aed" onClick={() => navigate('/dispositivos')} />
+          <GpsStat icono="🎒" label="GPS Portátiles" valor={gps_stats.gps_portatiles || 0} color="#f59e0b" onClick={() => navigate('/dispositivos')} />
+          <GpsStat icono="🎒🔄" label="Portátiles en Alquiler" valor={gps_stats.portatiles_alquiler || 0} color="#ef4444" onClick={() => navigate('/dispositivos')} />
+          <GpsStat icono="📶" label="Líneas SIM Activas" valor={sim_stats.sims_activas || 0} color="#0891b2" onClick={() => navigate('/inventario')} />
+          <GpsStat icono="📦" label="Líneas SIM Disponibles" valor={sim_stats.sims_disponibles || 0} color="#64748b" onClick={() => navigate('/inventario')} />
+        </div>
+
+        {/* Gráfica distribución GPS por tipo/modalidad + por plataforma */}
+        <div style={{ display: 'grid', gridTemplateColumns: mob ? '1fr' : '1fr 1fr', gap: '20px' }}>
+          {/* Gráfica dona: distribución por modalidad */}
+          <div style={{ background: 'white', borderRadius: 'var(--radio)', padding: '20px', boxShadow: 'var(--sombra)' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '4px', color: '#374151' }}>Distribución de GPS</h3>
+            <p style={{ fontSize: '11px', color: 'var(--gris)', marginBottom: '14px' }}>Por tipo y modalidad</p>
+            <Doughnut
+              data={{
+                labels: ['Fijo Alquiler', 'Fijo Venta', 'Portátil Alquiler', 'Portátil Venta'],
+                datasets: [{
+                  data: [
+                    gps_stats.fijos_alquiler || 0,
+                    gps_stats.fijos_venta || 0,
+                    gps_stats.portatiles_alquiler || 0,
+                    (gps_stats.gps_portatiles || 0) - (gps_stats.portatiles_alquiler || 0)
+                  ],
+                  backgroundColor: ['#4F6EF7', '#16a34a', '#f59e0b', '#7c3aed'],
+                  borderWidth: 2,
+                  borderColor: 'white'
+                }]
+              }}
+              options={{
+                responsive: true,
+                plugins: {
+                  legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } },
+                  tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} unidades` } }
+                }
+              }}
+            />
+          </div>
+
+          {/* Gráfica barras: distribución por plataforma */}
+          <div style={{ background: 'white', borderRadius: 'var(--radio)', padding: '20px', boxShadow: 'var(--sombra)' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '4px', color: '#374151' }}>GPS por Plataforma</h3>
+            <p style={{ fontSize: '11px', color: 'var(--gris)', marginBottom: '14px' }}>Cantidad de equipos por plataforma de rastreo</p>
+            {gps_por_plataforma.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '30px', color: 'var(--gris)' }}>
+                <div style={{ fontSize: '28px', marginBottom: '8px' }}>📡</div>
+                <p style={{ fontSize: '13px' }}>Sin datos de plataforma aún</p>
+                <p style={{ fontSize: '11px', marginTop: '4px' }}>Edita los GPS y asígnales una plataforma.</p>
+              </div>
+            ) : (
+              <Bar
+                data={{
+                  labels: gps_por_plataforma.map(p => {
+                    const icons = { sinotrack: '📡 Sinotrack', gpspos: '🗺️ GPS Pos', yogu: '📍 Yogu', otra: '🔧 Otra', 'Sin plataforma': '❓ Sin plataforma' };
+                    return icons[p.plataforma] || p.plataforma;
+                  }),
+                  datasets: [{
+                    label: 'Equipos',
+                    data: gps_por_plataforma.map(p => p.cantidad),
+                    backgroundColor: ['#4F6EF7', '#16a34a', '#7c3aed', '#f59e0b', '#9ca3af'],
+                    borderRadius: 6
+                  }]
+                }}
+                options={{
+                  responsive: true,
+                  plugins: { legend: { display: false } },
+                  scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                }}
+              />
+            )}
           </div>
         </div>
       </div>

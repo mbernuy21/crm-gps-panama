@@ -72,7 +72,7 @@ router.post('/', async (req, res) => {
   try {
     const {
       cliente_id, serial_gps, simcard, placa_vehiculo, modelo_auto,
-      tipo_producto, modalidad, valor_equipo_usd, estado, fecha_asignacion, notas
+      tipo_producto, modalidad, valor_equipo_usd, estado, fecha_asignacion, notas, plataforma
     } = req.body;
 
     if (!serial_gps) {
@@ -105,11 +105,11 @@ router.post('/', async (req, res) => {
 
     const [result] = await db.query(
       `INSERT INTO dispositivos (cliente_id, serial_gps, simcard, placa_vehiculo, modelo_auto,
-        tipo_producto, modalidad, valor_equipo_usd, estado, fecha_asignacion, notas)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        tipo_producto, modalidad, valor_equipo_usd, estado, fecha_asignacion, notas, plataforma)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [cliente_id || null, serial_gps, simLimpia, placa_vehiculo, modelo_auto,
        tipo_producto || 'fijo', modalidad || 'alquiler', valor_equipo_usd || 0,
-       estado || 'disponible', fecha_asignacion || null, notas]
+       estado || 'disponible', fecha_asignacion || null, notas, plataforma || null]
     );
 
     // Registrar en historial
@@ -142,7 +142,7 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const {
       cliente_id, serial_gps, simcard, placa_vehiculo, modelo_auto,
-      tipo_producto, modalidad, valor_equipo_usd, estado, fecha_asignacion, notas
+      tipo_producto, modalidad, valor_equipo_usd, estado, fecha_asignacion, notas, plataforma
     } = req.body;
 
     const [[actual]] = await db.query('SELECT * FROM dispositivos WHERE id = ?', [id]);
@@ -169,10 +169,11 @@ router.put('/:id', async (req, res) => {
     await db.query(
       `UPDATE dispositivos SET cliente_id=?, serial_gps=?, simcard=?, placa_vehiculo=?,
         modelo_auto=?, tipo_producto=?, modalidad=?, valor_equipo_usd=?,
-        estado=?, fecha_asignacion=?, notas=?
+        estado=?, fecha_asignacion=?, notas=?, plataforma=?
        WHERE id=?`,
       [cliente_id || null, serial_gps, simLimpia, placa_vehiculo, modelo_auto,
-       tipo_producto, modalidad, valor_equipo_usd, estado, fecha_asignacion || null, notas, id]
+       tipo_producto, modalidad, valor_equipo_usd, estado, fecha_asignacion || null, notas,
+       plataforma || null, id]
     );
 
     // Registrar reasignación si cambió de cliente

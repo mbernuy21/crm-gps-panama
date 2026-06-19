@@ -61,12 +61,14 @@ CREATE TABLE IF NOT EXISTS dispositivos (
   estado ENUM('asignado', 'disponible', 'devuelto', 'perdido', 'duplicado') NOT NULL DEFAULT 'disponible',
   fecha_asignacion DATE,
   notas TEXT,
+  plataforma VARCHAR(50) NULL DEFAULT NULL COMMENT 'Plataforma GPS: sinotrack, gpspos, yogu, otra',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL,
   INDEX idx_cliente_id (cliente_id),
   INDEX idx_estado (estado),
-  INDEX idx_serial (serial_gps)
+  INDEX idx_serial (serial_gps),
+  INDEX idx_plataforma (plataforma)
 );
 
 -- ------------------------------------------------------------

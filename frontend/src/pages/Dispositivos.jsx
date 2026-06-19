@@ -12,7 +12,7 @@ function ModalDispositivo({ dispositivo, clientes, simsDisponibles = [], onGuard
   const [form, setForm] = useState(dispositivo || {
     serial_gps: '', simcard: '', placa_vehiculo: '', modelo_auto: '',
     tipo_producto: 'fijo', modalidad: 'alquiler', valor_equipo_usd: 150,
-    estado: 'disponible', cliente_id: '', notas: ''
+    estado: 'disponible', cliente_id: '', notas: '', plataforma: ''
   });
 
   // Opciones del desplegable: las disponibles + la que ya tiene este equipo (al editar)
@@ -92,6 +92,23 @@ function ModalDispositivo({ dispositivo, clientes, simsDisponibles = [], onGuard
                 <option value="alquiler">Alquiler</option>
                 <option value="venta">Venta</option>
               </select>
+            </div>
+            {/* Plataforma GPS */}
+            <div style={{ gridColumn: '1/-1' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '4px' }}>
+                Plataforma GPS 🌐
+              </label>
+              <select value={form.plataforma || ''} onChange={e => setForm({ ...form, plataforma: e.target.value })}
+                style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--borde)', borderRadius: '7px', fontSize: '13px' }}>
+                <option value="">— Sin plataforma —</option>
+                <option value="sinotrack">📡 Sinotrack</option>
+                <option value="gpspos">🗺️ GPS Pos</option>
+                <option value="yogu">📍 Yogu</option>
+                <option value="otra">🔧 Otra</option>
+              </select>
+              <p style={{ fontSize: '11px', color: 'var(--gris)', marginTop: '4px' }}>
+                Plataforma de rastreo donde se monitorea este dispositivo.
+              </p>
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '4px' }}>Valor (USD)</label>
@@ -226,13 +243,13 @@ export default function Dispositivos() {
       <div style={{ background: 'white', borderRadius: 'var(--radio)', boxShadow: 'var(--sombra)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead><tr style={{ background: '#f9fafb' }}>
-            {['Serial GPS', 'SIM Card', 'Placa / Modelo', 'Tipo', 'Valor', 'Cliente', 'Estado', 'Acciones'].map(h => (
+            {['Serial GPS', 'SIM Card', 'Placa / Modelo', 'Tipo', 'Plataforma', 'Valor', 'Cliente', 'Estado', 'Acciones'].map(h => (
               <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6b7280', borderBottom: '1px solid var(--borde)' }}>{h}</th>
             ))}
           </tr></thead>
           <tbody>
             {cargando ? (
-              <tr><td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: 'var(--gris)' }}>Cargando...</td></tr>
+              <tr><td colSpan={9} style={{ padding: '40px', textAlign: 'center', color: 'var(--gris)' }}>Cargando...</td></tr>
             ) : dispositivos.map((d, i) => (
               <tr key={d.id} style={{ background: i % 2 === 0 ? 'white' : '#fafafa' }}>
                 <td style={{ padding: '10px 14px', fontSize: '13px', fontWeight: 500 }}>{d.serial_gps}</td>
@@ -242,6 +259,17 @@ export default function Dispositivos() {
                   <div style={{ color: 'var(--gris)', fontSize: '11px' }}>{d.modelo_auto || ''}</div>
                 </td>
                 <td style={{ padding: '10px 14px', fontSize: '12px' }}>{d.tipo_producto}</td>
+                <td style={{ padding: '10px 14px', fontSize: '12px' }}>
+                  {d.plataforma ? (
+                    <span style={{
+                      padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600,
+                      background: d.plataforma === 'sinotrack' ? '#dbeafe' : d.plataforma === 'gpspos' ? '#d1fae5' : d.plataforma === 'yogu' ? '#ede9fe' : '#f3f4f6',
+                      color: d.plataforma === 'sinotrack' ? '#1d4ed8' : d.plataforma === 'gpspos' ? '#065f46' : d.plataforma === 'yogu' ? '#5b21b6' : '#374151'
+                    }}>
+                      {d.plataforma === 'sinotrack' ? '📡 Sinotrack' : d.plataforma === 'gpspos' ? '🗺️ GPS Pos' : d.plataforma === 'yogu' ? '📍 Yogu' : d.plataforma}
+                    </span>
+                  ) : <span style={{ color: 'var(--gris)' }}>—</span>}
+                </td>
                 <td style={{ padding: '10px 14px', fontSize: '12px' }}>B/. {parseFloat(d.valor_equipo_usd || 0).toFixed(2)}</td>
                 <td style={{ padding: '10px 14px', fontSize: '12px' }}>{d.cliente_nombre || <span style={{ color: 'var(--gris)' }}>Sin asignar</span>}</td>
                 <td style={{ padding: '10px 14px' }}>

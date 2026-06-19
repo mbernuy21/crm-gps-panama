@@ -107,6 +107,8 @@ export default function Contratos() {
   const [plantillas, setPlantillas] = useState([]);
   const [modal, setModal] = useState(null);
   const [cargando, setCargando] = useState(true);
+  const [buscar, setBuscar] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('');
 
   function cargar() {
     setCargando(true);
@@ -170,9 +172,17 @@ export default function Contratos() {
     return '#22c55e';
   }
 
+  // Filtrado de contratos por búsqueda y estado
+  const contratosFiltrados = contratos.filter(c => {
+    const q = buscar.toLowerCase();
+    const matchBuscar = !q || (c.cliente_nombre || '').toLowerCase().includes(q) || (c.frecuencia || '').toLowerCase().includes(q);
+    const matchEstado = !filtroEstado || c.estado === filtroEstado;
+    return matchBuscar && matchEstado;
+  });
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
         <h1 style={{ fontSize: '22px', fontWeight: 700 }}>Contratos</h1>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <ExportButton modulo="contratos" label="📊 Exportar Excel" />
@@ -181,6 +191,36 @@ export default function Contratos() {
             + Nuevo contrato
           </button>
         </div>
+      </div>
+
+      {/* Buscador y filtros */}
+      <div style={{ background: 'white', borderRadius: 'var(--radio)', padding: '14px 16px', marginBottom: '16px', boxShadow: 'var(--sombra)', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: '1', minWidth: '200px' }}>
+          <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--gris)', fontSize: '14px' }}>🔍</span>
+          <input
+            type="text"
+            placeholder="Buscar por cliente o frecuencia..."
+            value={buscar}
+            onChange={e => setBuscar(e.target.value)}
+            style={{ width: '100%', padding: '7px 10px 7px 32px', border: '1px solid var(--borde)', borderRadius: '7px', fontSize: '13px', boxSizing: 'border-box' }}
+          />
+        </div>
+        <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}
+          style={{ padding: '7px 10px', border: '1px solid var(--borde)', borderRadius: '7px', fontSize: '13px', minWidth: '140px' }}>
+          <option value="">Todos los estados</option>
+          <option value="activo">Activo</option>
+          <option value="suspendido">Suspendido</option>
+          <option value="cancelado">Cancelado</option>
+        </select>
+        {(buscar || filtroEstado) && (
+          <button onClick={() => { setBuscar(''); setFiltroEstado(''); }}
+            style={{ padding: '7px 12px', background: '#f3f4f6', border: '1px solid var(--borde)', borderRadius: '7px', cursor: 'pointer', fontSize: '12px' }}>
+            Limpiar
+          </button>
+        )}
+        <span style={{ fontSize: '12px', color: 'var(--gris)', whiteSpace: 'nowrap' }}>
+          {contratosFiltrados.length} de {contratos.length} contratos
+        </span>
       </div>
 
       <div style={{ background: 'white', borderRadius: 'var(--radio)', boxShadow: 'var(--sombra)', overflow: 'hidden' }}>
@@ -193,7 +233,11 @@ export default function Contratos() {
           <tbody>
             {cargando ? (
               <tr><td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: 'var(--gris)' }}>Cargando...</td></tr>
-            ) : contratos.map((c, i) => (
+            ) : contratosFiltrados.length === 0 ? (
+              <tr><td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: 'var(--gris)' }}>
+                {buscar || filtroEstado ? 'Sin resultados para la búsqueda' : 'Sin contratos registrados'}
+              </td></tr>
+            ) : contratosFiltrados.map((c, i) => (
               <tr key={c.id} style={{ background: i % 2 === 0 ? 'white' : '#fafafa' }}>
                 <td style={{ padding: '10px 14px', fontSize: '13px', fontWeight: 500 }}>
                   {c.cliente_nombre}
