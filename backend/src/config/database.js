@@ -2,12 +2,19 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
+// Railway usa MYSQLHOST/MYSQLUSER/etc. — soporte para ambas convenciones
+const dbConfig = {
+  host:     process.env.MYSQLHOST     || process.env.DB_HOST     || 'localhost',
+  user:     process.env.MYSQLUSER     || process.env.DB_USER,
+  password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD,
+  database: process.env.MYSQLDATABASE || process.env.DB_NAME     || 'crm_gps_panama',
+  port:     parseInt(process.env.MYSQLPORT || process.env.DB_PORT) || 3306,
+};
+
+console.log(`🗄️  BD: ${dbConfig.user}@${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`);
+
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME || 'crm_gps_panama',
-  port: parseInt(process.env.DB_PORT) || 3306,
+  ...dbConfig,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
