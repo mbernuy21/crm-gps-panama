@@ -16,7 +16,7 @@ const pool = mysql.createPool({
   charset: 'utf8mb4'
 });
 
-// Verificar conexión al iniciar con reintentos automáticos
+// Verificar conexión al iniciar con reintentos automáticos (no-bloqueante)
 async function verificarConexion(intentos = 10, espera = 5000) {
   for (let i = 1; i <= intentos; i++) {
     try {
@@ -30,13 +30,17 @@ async function verificarConexion(intentos = 10, espera = 5000) {
         console.log(`⏳ Reintentando en ${espera / 1000}s...`);
         await new Promise(r => setTimeout(r, espera));
       } else {
-        console.error('🚫 No se pudo conectar a MySQL. Abortando.');
-        process.exit(1);
+        console.warn('⚠️ No se pudo conectar a MySQL. El servidor iniciará en modo degradado.');
+        // No hacemos process.exit(1) — la app continúa y reintenta conectar
+        return;
       }
     }
   }
 }
 
-verificarConexion();
+verificarConexion().catch(err => {
+  console.error('Error inesperado en verificación de BD:', err.message);
+  // Continuamos de todas formas
+});
 
 module.exports = pool;
