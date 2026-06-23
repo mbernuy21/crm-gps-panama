@@ -92,7 +92,7 @@ app.listen(PORT, () => {
         }).on('error', () => {
           // Silencioso — no bloquear si falla
         });
-      }, 4 * 60 * 1000); // cada 4 minutos
+      }, 2 * 60 * 1000); // cada 2 minutos
       console.log(`🏓 Keep-alive activo → ${SELF_URL}`);
     }
   }
