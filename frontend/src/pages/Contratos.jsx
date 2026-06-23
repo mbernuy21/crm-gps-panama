@@ -6,7 +6,19 @@ import ExportButton from '../components/ExportButton';
 
 function ModalContrato({ contrato, clientes, onGuardar, onCerrar }) {
   const hoy = new Date().toISOString().split('T')[0];
-  const [form, setForm] = useState(contrato || {
+
+  // Las fechas del servidor vienen como "2024-01-15T05:00:00.000Z"
+  // El input[type=date] necesita solo "2024-01-15"
+  function formatFecha(fecha) {
+    if (!fecha) return hoy;
+    return new Date(fecha).toISOString().split('T')[0];
+  }
+
+  const [form, setForm] = useState(contrato ? {
+    ...contrato,
+    fecha_inicio: formatFecha(contrato.fecha_inicio),
+    fecha_proximo_pago: formatFecha(contrato.fecha_proximo_pago),
+  } : {
     cliente_id: '', frecuencia: 'mensual', monto_total: 30,
     fecha_inicio: hoy, fecha_proximo_pago: hoy, dias_alerta: 5, estado: 'activo'
   });
@@ -226,15 +238,15 @@ export default function Contratos() {
       <div style={{ background: 'white', borderRadius: 'var(--radio)', boxShadow: 'var(--sombra)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead><tr style={{ background: '#f9fafb' }}>
-            {['Cliente', 'Frecuencia', 'Monto', 'Próximo pago', 'Días', 'Estado', 'Acciones'].map(h => (
+            {['Cliente', 'Frecuencia', 'Monto', 'Saldo favor', 'Próximo pago', 'Días', 'Estado', 'Acciones'].map(h => (
               <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6b7280', borderBottom: '1px solid var(--borde)' }}>{h}</th>
             ))}
           </tr></thead>
           <tbody>
             {cargando ? (
-              <tr><td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: 'var(--gris)' }}>Cargando...</td></tr>
+              <tr><td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: 'var(--gris)' }}>Cargando...</td></tr>
             ) : contratosFiltrados.length === 0 ? (
-              <tr><td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: 'var(--gris)' }}>
+              <tr><td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: 'var(--gris)' }}>
                 {buscar || filtroEstado ? 'Sin resultados para la búsqueda' : 'Sin contratos registrados'}
               </td></tr>
             ) : contratosFiltrados.map((c, i) => (
@@ -245,6 +257,15 @@ export default function Contratos() {
                 </td>
                 <td style={{ padding: '10px 14px', fontSize: '12px', textTransform: 'capitalize' }}>{c.frecuencia}</td>
                 <td style={{ padding: '10px 14px', fontSize: '13px', fontWeight: 600 }}>B/. {parseFloat(c.monto_total).toFixed(2)}</td>
+                <td style={{ padding: '10px 14px', fontSize: '13px' }}>
+                  {parseFloat(c.saldo_favor || 0) > 0 ? (
+                    <span style={{ color: '#16a34a', fontWeight: 700, background: '#f0fdf4', padding: '2px 8px', borderRadius: '10px', fontSize: '12px' }}>
+                      ✅ B/. {parseFloat(c.saldo_favor).toFixed(2)}
+                    </span>
+                  ) : (
+                    <span style={{ color: 'var(--gris)', fontSize: '12px' }}>—</span>
+                  )}
+                </td>
                 <td style={{ padding: '10px 14px', fontSize: '13px' }}>
                   {new Date(c.fecha_proximo_pago).toLocaleDateString('es-PA')}
                 </td>

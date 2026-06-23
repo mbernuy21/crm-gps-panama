@@ -58,18 +58,48 @@ router.post('/', async (req, res) => {
       [contrato_id, cliente_id, fecha_pago, monto, metodo || 'transferencia', link_comprobante, req.usuario.id, notas]
     );
 
-    // Calcular próxima fecha de pago según frecuencia del contrato
-    const [[contrato]] = await db.query('SELECT frecuencia FROM contratos WHERE id = ?', [contrato_id]);
-    if (contrato) {
-      let meses = 1;
-      if (contrato.frecuencia === 'semestral') meses = 6;
-      if (contrato.frecuencia === 'anual') meses = 12;
+    // Calcular cuántos períodos cubre el pago
+    // Si el cliente paga más de un período, se avanza la fecha proporcionalmente
+    const [[contrato]] = await db.query(
+      'SELECT frecuencia, monto_total, saldo_favor FROM contratos WHERE id = ?',
+      [contrato_id]
+    );
 
-      await db.query(
-        `UPDATE contratos SET fecha_proximo_pago = DATE_ADD(fecha_proximo_pago, INTERVAL ? MONTH), estado = 'activo'
-         WHERE id = ?`,
-        [meses, contrato_id]
-      );
+    if (contrato) {
+      let mesesPorPeriodo = 1;
+      if (contrato.frecuencia === 'semestral') mesesPorPeriodo = 6;
+      if (contrato.frecuencia === 'anual') mesesPorPeriodo = 12;
+
+      const montoPagado = parseFloat(monto);
+      const montoContrato = parseFloat(contrato.monto_total);
+      const saldoPrevio = parseFloat(contrato.saldo_favor || 0);
+
+      // Total disponible = saldo favor anterior + pago actual
+      const totalDisponible = saldoPrevio + montoPagado;
+
+      // Cuántos períodos completos cubre
+      const periodosCompletos = Math.floor(totalDisponible / montoContrato);
+      // Saldo a favor que sobra después de cubrir períodos completos
+      const nuevoSaldoFavor = totalDisponible - (periodosCompletos * montoContrato);
+
+      if (periodosCompletos > 0) {
+        // Avanzar fecha por los períodos completos pagados
+        const mesesAvanzar = periodosCompletos * mesesPorPeriodo;
+        await db.query(
+          `UPDATE contratos
+           SET fecha_proximo_pago = DATE_ADD(fecha_proximo_pago, INTERVAL ? MONTH),
+               estado = 'activo',
+               saldo_favor = ?
+           WHERE id = ?`,
+          [mesesAvanzar, nuevoSaldoFavor, contrato_id]
+        );
+      } else {
+        // Pago parcial — no avanza fecha pero guarda el saldo
+        await db.query(
+          `UPDATE contratos SET saldo_favor = ?, estado = 'activo' WHERE id = ?`,
+          [nuevoSaldoFavor, contrato_id]
+        );
+      }
 
       // Reactivar cliente si estaba moroso/suspendido
       await db.query(
