@@ -6,13 +6,25 @@ require('dotenv').config();
 
 const app = express();
 
-// Middleware — CORS: acepta el frontend configurado o cualquier origen en Railway
-const allowedOrigins = process.env.FRONTEND_URL
-  ? [process.env.FRONTEND_URL, 'http://localhost:3000', 'http://localhost:3100']
-  : true; // true = cualquier origen (Railway development)
+// Middleware — CORS: siempre permite crm.gpstrackerpanama.com + localhost
+const origenesPermitidos = [
+  'https://crm.gpstrackerpanama.com',
+  'http://crm.gpstrackerpanama.com',
+  'http://localhost:3000',
+  'http://localhost:3100',
+  'http://localhost:3001',
+];
+if (process.env.FRONTEND_URL) origenesPermitidos.push(process.env.FRONTEND_URL);
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: function (origin, callback) {
+    // Permitir requests sin origen (Postman, Railway health checks, etc.)
+    if (!origin) return callback(null, true);
+    if (origenesPermitidos.includes(origin)) return callback(null, true);
+    // En desarrollo o si no está configurado, permitir todo
+    if (process.env.NODE_ENV !== 'production') return callback(null, true);
+    callback(new Error('CORS: origen no permitido — ' + origin));
+  },
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
