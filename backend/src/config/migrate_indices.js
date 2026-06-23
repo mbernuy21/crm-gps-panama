@@ -5,33 +5,33 @@ const db = require('./database');
 
 const indices = [
   // Clientes — más consultados por estado y nombre
-  `ALTER TABLE clientes ADD INDEX IF NOT EXISTS idx_clientes_estado (estado)`,
-  `ALTER TABLE clientes ADD INDEX IF NOT EXISTS idx_clientes_nombre (nombre_razon_social)`,
+  `ALTER TABLE clientes ADD INDEX idx_clientes_estado (estado)`,
+  `ALTER TABLE clientes ADD INDEX idx_clientes_nombre (nombre_razon_social)`,
 
   // Dispositivos — consultados por cliente y estado
-  `ALTER TABLE dispositivos ADD INDEX IF NOT EXISTS idx_dispositivos_cliente (cliente_id)`,
-  `ALTER TABLE dispositivos ADD INDEX IF NOT EXISTS idx_dispositivos_estado (estado)`,
+  `ALTER TABLE dispositivos ADD INDEX idx_dispositivos_cliente (cliente_id)`,
+  `ALTER TABLE dispositivos ADD INDEX idx_dispositivos_estado (estado)`,
 
   // Contratos — consultados por cliente y fecha_proximo_pago
-  `ALTER TABLE contratos ADD INDEX IF NOT EXISTS idx_contratos_cliente (cliente_id)`,
-  `ALTER TABLE contratos ADD INDEX IF NOT EXISTS idx_contratos_estado (estado)`,
-  `ALTER TABLE contratos ADD INDEX IF NOT EXISTS idx_contratos_fecha_pago (fecha_proximo_pago)`,
+  `ALTER TABLE contratos ADD INDEX idx_contratos_cliente (cliente_id)`,
+  `ALTER TABLE contratos ADD INDEX idx_contratos_estado (estado)`,
+  `ALTER TABLE contratos ADD INDEX idx_contratos_fecha_pago (fecha_proximo_pago)`,
 
   // Pagos — consultados por cliente y contrato
-  `ALTER TABLE pagos ADD INDEX IF NOT EXISTS idx_pagos_cliente (cliente_id)`,
-  `ALTER TABLE pagos ADD INDEX IF NOT EXISTS idx_pagos_contrato (contrato_id)`,
-  `ALTER TABLE pagos ADD INDEX IF NOT EXISTS idx_pagos_fecha (fecha_pago)`,
+  `ALTER TABLE pagos ADD INDEX idx_pagos_cliente (cliente_id)`,
+  `ALTER TABLE pagos ADD INDEX idx_pagos_contrato (contrato_id)`,
+  `ALTER TABLE pagos ADD INDEX idx_pagos_fecha (fecha_pago)`,
 
   // Facturas — consultadas por cliente y estado
-  `ALTER TABLE facturas ADD INDEX IF NOT EXISTS idx_facturas_cliente (cliente_id)`,
-  `ALTER TABLE facturas ADD INDEX IF NOT EXISTS idx_facturas_estado (estado)`,
+  `ALTER TABLE facturas ADD INDEX idx_facturas_cliente (cliente_id)`,
+  `ALTER TABLE facturas ADD INDEX idx_facturas_estado (estado)`,
 
   // Leads — consultados por estado
-  `ALTER TABLE leads ADD INDEX IF NOT EXISTS idx_leads_estado (estado)`,
+  `ALTER TABLE leads ADD INDEX idx_leads_estado (estado)`,
 
   // Alertas — consultadas por estado y tipo
-  `ALTER TABLE alertas ADD INDEX IF NOT EXISTS idx_alertas_estado (estado)`,
-  `ALTER TABLE alertas ADD INDEX IF NOT EXISTS idx_alertas_cliente (cliente_id)`,
+  `ALTER TABLE alertas ADD INDEX idx_alertas_estado (estado)`,
+  `ALTER TABLE alertas ADD INDEX idx_alertas_cliente (cliente_id)`,
 ];
 
 async function migrar() {
