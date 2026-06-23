@@ -76,6 +76,26 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor CRM GPS corriendo en puerto ${PORT}`);
   console.log(`📊 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+
+  // Auto-ping cada 4 minutos para evitar que Railway duerma el servidor
+  // Railway duerme procesos inactivos en planes gratuitos — esto los mantiene despiertos
+  if (process.env.NODE_ENV === 'production') {
+    const https = require('https');
+    const SELF_URL = process.env.RAILWAY_PUBLIC_DOMAIN
+      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}/api/health`
+      : null;
+
+    if (SELF_URL) {
+      setInterval(() => {
+        https.get(SELF_URL, res => {
+          console.log(`🏓 Keep-alive ping OK (${res.statusCode})`);
+        }).on('error', () => {
+          // Silencioso — no bloquear si falla
+        });
+      }, 4 * 60 * 1000); // cada 4 minutos
+      console.log(`🏓 Keep-alive activo → ${SELF_URL}`);
+    }
+  }
 });
 
 module.exports = app;
