@@ -55,6 +55,7 @@ app.use('/api/reportes', require('./routes/reportes'));
 app.use('/api/importar', require('./routes/importar'));
 app.use('/api/auditoria', require('./routes/auditoria'));
 app.use('/api/simcards', require('./routes/simcards'));
+app.use('/api/ventas', require('./routes/ventas'));
 
 // Health check
 app.get('/api/health', (req, res) => {

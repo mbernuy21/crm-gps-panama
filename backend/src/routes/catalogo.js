@@ -6,11 +6,13 @@ const { authMiddleware } = require('../middleware/auth');
 
 router.use(authMiddleware);
 
-// GET /api/catalogo — listar todos los productos activos
+// GET /api/catalogo — listar productos (activos por defecto, ?todos=1 para todos)
 router.get('/', async (req, res) => {
   try {
+    const traerTodos = req.query.todos === '1';
+    const where = traerTodos ? '' : 'WHERE activo = 1';
     const [productos] = await db.query(
-      'SELECT * FROM catalogo_productos WHERE activo = 1 ORDER BY nombre ASC'
+      `SELECT * FROM catalogo_productos ${where} ORDER BY activo DESC, nombre ASC`
     );
     res.json({ success: true, data: productos });
   } catch (err) {

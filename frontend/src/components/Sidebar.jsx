@@ -21,6 +21,7 @@ const menu = [
   { sep: 'Ventas' },
   { path: '/leads',        label: 'Leads',            icono: '🎯' },
   { path: '/cotizaciones', label: 'Cotizaciones',     icono: '📝' },
+  { path: '/catalogo',     label: 'Catálogo',         icono: '🏷️' },
   { path: '/plantillas',   label: 'Plantillas WA',    icono: '💬' },
 
   // ── INVENTARIO / GPS ──────────────────────────────

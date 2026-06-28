@@ -23,6 +23,7 @@ import Simcards from './pages/Simcards';
 import Auditoria from './pages/Auditoria';
 import AsistenteIA from './pages/AsistenteIA';
 import Guia from './pages/Guia';
+import Catalogo from './pages/Catalogo';
 
 // Ruta protegida — redirige al login si no hay token
 function RutaProtegida({ children }) {
@@ -64,6 +65,7 @@ export default function App() {
           <Route path="auditoria" element={<Auditoria />} />
           <Route path="asistente" element={<AsistenteIA />} />
           <Route path="guia" element={<Guia />} />
+          <Route path="catalogo" element={<Catalogo />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
