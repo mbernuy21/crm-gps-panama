@@ -125,6 +125,7 @@ export default function Contratos() {
   const [buscar, setBuscar] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
   const [pagina, setPagina] = useState(1);
+  const [itemsPorPagina, setItemsPorPagina] = useState(50);
 
   function cargar() {
     setCargando(true);
@@ -195,7 +196,7 @@ export default function Contratos() {
     const matchEstado = !filtroEstado || c.estado === filtroEstado;
     return matchBuscar && matchEstado;
   });
-  const contratosPagina = contratosFiltrados.slice((pagina - 1) * ITEMS_POR_PAGINA, pagina * ITEMS_POR_PAGINA);
+  const contratosPagina = contratosFiltrados.slice((pagina - 1) * itemsPorPagina, pagina * itemsPorPagina);
 
   return (
     <div>
@@ -304,8 +305,9 @@ export default function Contratos() {
         <Paginacion
           pagina={pagina}
           totalItems={contratosFiltrados.length}
-          itemsPorPagina={ITEMS_POR_PAGINA}
+          itemsPorPagina={itemsPorPagina}
           onChange={p => setPagina(p)}
+          onChangeItems={n => setItemsPorPagina(n)}
         />
         <div style={{ padding: '6px 14px', borderTop: '1px solid var(--borde)', fontSize: '12px', color: 'var(--gris)' }}>
           {contratosFiltrados.length} de {contratos.length} contrato(s)

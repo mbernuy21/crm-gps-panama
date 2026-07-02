@@ -109,6 +109,7 @@ export default function Clientes() {
   const [importarModal, setImportarModal] = useState(false);
   const [filtros, setFiltros] = useState({ estado: searchParams.get('estado') || '', buscar: '', frecuencia: '', modalidad_gps: '' });
   const [pagina, setPagina] = useState(1);
+  const [itemsPorPagina, setItemsPorPagina] = useState(50);
 
   function cargar() {
     setCargando(true);
@@ -203,7 +204,7 @@ export default function Clientes() {
               <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: 'var(--gris)' }}>Cargando...</td></tr>
             ) : clientes.length === 0 ? (
               <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: 'var(--gris)' }}>No se encontraron clientes</td></tr>
-            ) : clientes.slice((pagina - 1) * ITEMS_POR_PAGINA, pagina * ITEMS_POR_PAGINA).map((c, i) => (
+            ) : clientes.slice((pagina - 1) * itemsPorPagina, pagina * itemsPorPagina).map((c, i) => (
               <tr key={c.id} style={{ background: i % 2 === 0 ? 'white' : '#fafafa' }}>
                 <td style={{ padding: '11px 14px', fontSize: '13px' }}>
                   <span
@@ -244,8 +245,9 @@ export default function Clientes() {
         <Paginacion
           pagina={pagina}
           totalItems={clientes.length}
-          itemsPorPagina={ITEMS_POR_PAGINA}
+          itemsPorPagina={itemsPorPagina}
           onChange={p => setPagina(p)}
+          onChangeItems={n => setItemsPorPagina(n)}
         />
         <div style={{ padding: '6px 14px', borderTop: '1px solid var(--borde)', fontSize: '12px', color: 'var(--gris)' }}>
           {clientes.length} cliente(s) encontrado(s)

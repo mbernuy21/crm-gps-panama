@@ -375,6 +375,7 @@ export default function Pagos() {
   const [filtrosPagos, setFiltrosPagos] = useState({ fecha_desde: '', fecha_hasta: '' });
   const [buscarPagos, setBuscarPagos] = useState('');
   const [paginaPagos, setPaginaPagos] = useState(1);
+  const [itemsPorPaginaPagos, setItemsPorPaginaPagos] = useState(50);
 
   // Estado tab ventas
   const [ventas, setVentas] = useState([]);
@@ -384,6 +385,7 @@ export default function Pagos() {
   const [filtrosVentas, setFiltrosVentas] = useState({ fecha_desde: '', fecha_hasta: '' });
   const [buscarVentas, setBuscarVentas] = useState('');
   const [paginaVentas, setPaginaVentas] = useState(1);
+  const [itemsPorPaginaVentas, setItemsPorPaginaVentas] = useState(50);
 
   // Cargar pagos de contrato
   function cargarPagos() {
@@ -552,7 +554,7 @@ export default function Pagos() {
                   <tr><td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>Cargando...</td></tr>
                 ) : pagosFiltrados.length === 0 ? (
                   <tr><td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>Sin pagos en el período</td></tr>
-                ) : pagosFiltrados.slice((paginaPagos - 1) * ITEMS_POR_PAGINA, paginaPagos * ITEMS_POR_PAGINA).map((p, i) => (
+                ) : pagosFiltrados.slice((paginaPagos - 1) * itemsPorPaginaPagos, paginaPagos * itemsPorPaginaPagos).map((p, i) => (
                   <tr key={p.id} style={{ background: i % 2 === 0 ? 'white' : '#fafafa' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#f0f9ff'}
                     onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? 'white' : '#fafafa'}>
@@ -582,7 +584,7 @@ export default function Pagos() {
                 ))}
               </tbody>
             </table>
-            <Paginacion pagina={paginaPagos} totalItems={pagosFiltrados.length} itemsPorPagina={ITEMS_POR_PAGINA} onChange={p => setPaginaPagos(p)} />
+            <Paginacion pagina={paginaPagos} totalItems={pagosFiltrados.length} itemsPorPagina={itemsPorPaginaPagos} onChange={p => setPaginaPagos(p)} onChangeItems={n => setItemsPorPaginaPagos(n)} />
             <div style={{ padding: '6px 14px', borderTop: '1px solid #e5e7eb', fontSize: '12px', color: '#9ca3af' }}>
               {pagosFiltrados.length} de {pagos.length} pago(s)
             </div>
@@ -641,7 +643,7 @@ export default function Pagos() {
                     Sin ventas/cobros registrados
                     <br /><span style={{ fontSize: '12px', marginTop: '6px', display: 'block' }}>Usa el botón "🛒 Registrar venta / cobro" para agregar</span>
                   </td></tr>
-                ) : ventasFiltradas.slice((paginaVentas - 1) * ITEMS_POR_PAGINA, paginaVentas * ITEMS_POR_PAGINA).map((v, i) => (
+                ) : ventasFiltradas.slice((paginaVentas - 1) * itemsPorPaginaVentas, paginaVentas * itemsPorPaginaVentas).map((v, i) => (
                   <tr key={v.id} style={{ background: i % 2 === 0 ? 'white' : '#fafafa' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#f5f3ff'}
                     onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? 'white' : '#fafafa'}>
@@ -676,7 +678,7 @@ export default function Pagos() {
               </tbody>
             </table>
             <div style={{ padding: '10px 14px', borderTop: '1px solid #e5e7eb', fontSize: '12px', color: '#9ca3af', display: 'flex', justifyContent: 'space-between' }}>
-              <Paginacion pagina={paginaVentas} totalItems={ventasFiltradas.length} itemsPorPagina={ITEMS_POR_PAGINA} onChange={p => setPaginaVentas(p)} />
+              <Paginacion pagina={paginaVentas} totalItems={ventasFiltradas.length} itemsPorPagina={itemsPorPaginaVentas} onChange={p => setPaginaVentas(p)} onChangeItems={n => setItemsPorPaginaVentas(n)} />
               <span>{ventasFiltradas.length} de {ventas.length} cobro(s)</span>
               {totalVentas > 0 && (
                 <span style={{ fontWeight: 600, color: '#4F6EF7' }}>

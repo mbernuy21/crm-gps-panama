@@ -165,6 +165,7 @@ export default function Dispositivos() {
   const [importarModal, setImportarModal] = useState(false);
   const [filtros, setFiltros] = useState({ estado: '', buscar: '', combo: '' });
   const [pagina, setPagina] = useState(1);
+  const [itemsPorPagina, setItemsPorPagina] = useState(50);
 
   // Filtro combinado tipo+modalidad
   const COMBOS = [
@@ -254,7 +255,7 @@ export default function Dispositivos() {
           <tbody>
             {cargando ? (
               <tr><td colSpan={9} style={{ padding: '40px', textAlign: 'center', color: 'var(--gris)' }}>Cargando...</td></tr>
-            ) : dispositivos.slice((pagina - 1) * ITEMS_POR_PAGINA, pagina * ITEMS_POR_PAGINA).map((d, i) => (
+            ) : dispositivos.slice((pagina - 1) * itemsPorPagina, pagina * itemsPorPagina).map((d, i) => (
               <tr key={d.id} style={{ background: i % 2 === 0 ? 'white' : '#fafafa' }}>
                 <td style={{ padding: '10px 14px', fontSize: '13px', fontWeight: 500 }}>{d.serial_gps}</td>
                 <td style={{ padding: '10px 14px', fontSize: '12px' }}>{d.simcard || '—'}</td>
@@ -301,8 +302,9 @@ export default function Dispositivos() {
         <Paginacion
           pagina={pagina}
           totalItems={dispositivos.length}
-          itemsPorPagina={ITEMS_POR_PAGINA}
+          itemsPorPagina={itemsPorPagina}
           onChange={p => setPagina(p)}
+          onChangeItems={n => setItemsPorPagina(n)}
         />
         <div style={{ padding: '6px 14px', borderTop: '1px solid var(--borde)', fontSize: '12px', color: 'var(--gris)' }}>
           {dispositivos.length} dispositivo(s)
