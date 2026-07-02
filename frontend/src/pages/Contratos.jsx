@@ -3,6 +3,9 @@ import { toast } from 'react-toastify';
 import api from '../services/api';
 import AlertaBadge from '../components/AlertaBadge';
 import ExportButton from '../components/ExportButton';
+import Paginacion from '../components/Paginacion';
+
+const ITEMS_POR_PAGINA = 50;
 
 function ModalContrato({ contrato, clientes, onGuardar, onCerrar }) {
   const hoy = new Date().toISOString().split('T')[0];
@@ -121,6 +124,7 @@ export default function Contratos() {
   const [cargando, setCargando] = useState(true);
   const [buscar, setBuscar] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
+  const [pagina, setPagina] = useState(1);
 
   function cargar() {
     setCargando(true);
@@ -191,6 +195,7 @@ export default function Contratos() {
     const matchEstado = !filtroEstado || c.estado === filtroEstado;
     return matchBuscar && matchEstado;
   });
+  const contratosPagina = contratosFiltrados.slice((pagina - 1) * ITEMS_POR_PAGINA, pagina * ITEMS_POR_PAGINA);
 
   return (
     <div>
@@ -213,11 +218,11 @@ export default function Contratos() {
             type="text"
             placeholder="Buscar por cliente o frecuencia..."
             value={buscar}
-            onChange={e => setBuscar(e.target.value)}
+            onChange={e => { setBuscar(e.target.value); setPagina(1); }}
             style={{ width: '100%', padding: '7px 10px 7px 32px', border: '1px solid var(--borde)', borderRadius: '7px', fontSize: '13px', boxSizing: 'border-box' }}
           />
         </div>
-        <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}
+        <select value={filtroEstado} onChange={e => { setFiltroEstado(e.target.value); setPagina(1); }}
           style={{ padding: '7px 10px', border: '1px solid var(--borde)', borderRadius: '7px', fontSize: '13px', minWidth: '140px' }}>
           <option value="">Todos los estados</option>
           <option value="activo">Activo</option>
@@ -249,7 +254,7 @@ export default function Contratos() {
               <tr><td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: 'var(--gris)' }}>
                 {buscar || filtroEstado ? 'Sin resultados para la búsqueda' : 'Sin contratos registrados'}
               </td></tr>
-            ) : contratosFiltrados.map((c, i) => (
+            ) : contratosPagina.map((c, i) => (
               <tr key={c.id} style={{ background: i % 2 === 0 ? 'white' : '#fafafa' }}>
                 <td style={{ padding: '10px 14px', fontSize: '13px', fontWeight: 500 }}>
                   {c.cliente_nombre}
@@ -296,8 +301,14 @@ export default function Contratos() {
             ))}
           </tbody>
         </table>
-        <div style={{ padding: '10px 14px', borderTop: '1px solid var(--borde)', fontSize: '12px', color: 'var(--gris)' }}>
-          {contratos.length} contrato(s)
+        <Paginacion
+          pagina={pagina}
+          totalItems={contratosFiltrados.length}
+          itemsPorPagina={ITEMS_POR_PAGINA}
+          onChange={p => setPagina(p)}
+        />
+        <div style={{ padding: '6px 14px', borderTop: '1px solid var(--borde)', fontSize: '12px', color: 'var(--gris)' }}>
+          {contratosFiltrados.length} de {contratos.length} contrato(s)
         </div>
       </div>
 

@@ -5,6 +5,9 @@ import AlertaBadge from '../components/AlertaBadge';
 import ExportButton from '../components/ExportButton';
 import ModalConfirmar from '../components/ModalConfirmar';
 import ImportarGoogleSheets from '../components/ImportarGoogleSheets';
+import Paginacion from '../components/Paginacion';
+
+const ITEMS_POR_PAGINA = 50;
 
 const ESTADOS_GPS = ['disponible', 'asignado', 'devuelto', 'perdido', 'duplicado'];
 
@@ -161,6 +164,7 @@ export default function Dispositivos() {
   const [confirmar, setConfirmar] = useState({ visible: false, id: null });
   const [importarModal, setImportarModal] = useState(false);
   const [filtros, setFiltros] = useState({ estado: '', buscar: '', combo: '' });
+  const [pagina, setPagina] = useState(1);
 
   // Filtro combinado tipo+modalidad
   const COMBOS = [
@@ -194,8 +198,8 @@ export default function Dispositivos() {
     }).catch(() => setCargando(false));
   }
 
-  useEffect(() => { cargar(); }, [filtros.estado, filtros.combo]);
-  useEffect(() => { const t = setTimeout(cargar, 350); return () => clearTimeout(t); }, [filtros.buscar]);
+  useEffect(() => { setPagina(1); cargar(); }, [filtros.estado, filtros.combo]);
+  useEffect(() => { const t = setTimeout(() => { setPagina(1); cargar(); }, 350); return () => clearTimeout(t); }, [filtros.buscar]);
 
   async function eliminar() {
     try {
@@ -250,7 +254,7 @@ export default function Dispositivos() {
           <tbody>
             {cargando ? (
               <tr><td colSpan={9} style={{ padding: '40px', textAlign: 'center', color: 'var(--gris)' }}>Cargando...</td></tr>
-            ) : dispositivos.map((d, i) => (
+            ) : dispositivos.slice((pagina - 1) * ITEMS_POR_PAGINA, pagina * ITEMS_POR_PAGINA).map((d, i) => (
               <tr key={d.id} style={{ background: i % 2 === 0 ? 'white' : '#fafafa' }}>
                 <td style={{ padding: '10px 14px', fontSize: '13px', fontWeight: 500 }}>{d.serial_gps}</td>
                 <td style={{ padding: '10px 14px', fontSize: '12px' }}>{d.simcard || '—'}</td>
@@ -294,7 +298,13 @@ export default function Dispositivos() {
             ))}
           </tbody>
         </table>
-        <div style={{ padding: '10px 14px', borderTop: '1px solid var(--borde)', fontSize: '12px', color: 'var(--gris)' }}>
+        <Paginacion
+          pagina={pagina}
+          totalItems={dispositivos.length}
+          itemsPorPagina={ITEMS_POR_PAGINA}
+          onChange={p => setPagina(p)}
+        />
+        <div style={{ padding: '6px 14px', borderTop: '1px solid var(--borde)', fontSize: '12px', color: 'var(--gris)' }}>
           {dispositivos.length} dispositivo(s)
         </div>
       </div>

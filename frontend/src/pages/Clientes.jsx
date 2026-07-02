@@ -7,6 +7,9 @@ import ExportButton from '../components/ExportButton';
 import WhatsAppButton from '../components/WhatsAppButton';
 import ModalConfirmar from '../components/ModalConfirmar';
 import ImportarGoogleSheets from '../components/ImportarGoogleSheets';
+import Paginacion from '../components/Paginacion';
+
+const ITEMS_POR_PAGINA = 50;
 
 const ESTADOS = ['activo', 'inactivo', 'moroso', 'suspendido', 'cortado'];
 const PROVINCIAS = ['Panamá', 'Colón', 'Chiriquí', 'Bocas del Toro', 'Veraguas', 'Herrera', 'Los Santos', 'Coclé', 'Darién', 'Panamá Oeste'];
@@ -105,6 +108,7 @@ export default function Clientes() {
   const [confirmar, setConfirmar] = useState({ visible: false, id: null, nombre: '' });
   const [importarModal, setImportarModal] = useState(false);
   const [filtros, setFiltros] = useState({ estado: searchParams.get('estado') || '', buscar: '', frecuencia: '', modalidad_gps: '' });
+  const [pagina, setPagina] = useState(1);
 
   function cargar() {
     setCargando(true);
@@ -120,11 +124,11 @@ export default function Clientes() {
     }).catch(() => setCargando(false));
   }
 
-  useEffect(() => { cargar(); }, [filtros.estado, filtros.frecuencia, filtros.modalidad_gps]);
+  useEffect(() => { setPagina(1); cargar(); }, [filtros.estado, filtros.frecuencia, filtros.modalidad_gps]);
 
   // Búsqueda con debounce
   useEffect(() => {
-    const t = setTimeout(cargar, 350);
+    const t = setTimeout(() => { setPagina(1); cargar(); }, 350);
     return () => clearTimeout(t);
   }, [filtros.buscar]);
 
@@ -199,7 +203,7 @@ export default function Clientes() {
               <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: 'var(--gris)' }}>Cargando...</td></tr>
             ) : clientes.length === 0 ? (
               <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: 'var(--gris)' }}>No se encontraron clientes</td></tr>
-            ) : clientes.map((c, i) => (
+            ) : clientes.slice((pagina - 1) * ITEMS_POR_PAGINA, pagina * ITEMS_POR_PAGINA).map((c, i) => (
               <tr key={c.id} style={{ background: i % 2 === 0 ? 'white' : '#fafafa' }}>
                 <td style={{ padding: '11px 14px', fontSize: '13px' }}>
                   <span
@@ -237,7 +241,13 @@ export default function Clientes() {
             ))}
           </tbody>
         </table>
-        <div style={{ padding: '10px 14px', borderTop: '1px solid var(--borde)', fontSize: '12px', color: 'var(--gris)' }}>
+        <Paginacion
+          pagina={pagina}
+          totalItems={clientes.length}
+          itemsPorPagina={ITEMS_POR_PAGINA}
+          onChange={p => setPagina(p)}
+        />
+        <div style={{ padding: '6px 14px', borderTop: '1px solid var(--borde)', fontSize: '12px', color: 'var(--gris)' }}>
           {clientes.length} cliente(s) encontrado(s)
         </div>
       </div>
