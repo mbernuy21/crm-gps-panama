@@ -298,6 +298,77 @@ router.post('/gmail-contactos', auth, async (req, res) => {
   }
 });
 
+// POST /api/importar/dispositivos-csv — importar dispositivos desde texto CSV directo
+router.post('/dispositivos-csv', auth, async (req, res) => {
+  try {
+    const { csv } = req.body;
+    if (!csv || !csv.trim()) return res.status(400).json({ success: false, message: 'CSV vacío' });
+
+    const filas = parsearCSV(csv);
+    if (!filas.length) return res.status(400).json({ success: false, message: 'El CSV no tiene datos' });
+
+    let importados = 0, omitidos = 0;
+    const errores = [];
+
+    for (const f of filas) {
+      try {
+        if (!f.serial_gps) { omitidos++; errores.push(`Fila sin serial_gps`); continue; }
+        const [[existe]] = await db.query('SELECT id FROM dispositivos WHERE serial_gps = ?', [f.serial_gps]);
+        if (existe) { omitidos++; continue; }
+        await db.query(
+          `INSERT INTO dispositivos (serial_gps, simcard, placa_vehiculo, modelo_auto, tipo_producto, modalidad, valor_equipo_usd, estado)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 'disponible')`,
+          [f.serial_gps, f.simcard || null, f.placa_vehiculo || null, f.modelo_auto || null,
+           f.tipo_producto || 'fijo', f.modalidad || 'alquiler', parseFloat(f.valor_equipo_usd) || 0]
+        );
+        importados++;
+      } catch (e) { errores.push(`Error en fila ${f.serial_gps}: ${e.message}`); omitidos++; }
+    }
+
+    res.json({ success: true, data: { importados, omitidos, errores }, message: `${importados} dispositivo(s) importado(s)` });
+  } catch (err) {
+    console.error('Error importando dispositivos CSV:', err.message);
+    res.status(500).json({ success: false, message: 'Error importando: ' + err.message });
+  }
+});
+
+// POST /api/importar/clientes-csv — importar clientes desde texto CSV directo
+router.post('/clientes-csv', auth, async (req, res) => {
+  try {
+    const { csv } = req.body;
+    if (!csv || !csv.trim()) return res.status(400).json({ success: false, message: 'CSV vacío' });
+
+    const filas = parsearCSV(csv);
+    if (!filas.length) return res.status(400).json({ success: false, message: 'El CSV no tiene datos' });
+
+    let importados = 0, omitidos = 0;
+    const errores = [];
+
+    for (const f of filas) {
+      try {
+        if (!f.nombre_razon_social) { omitidos++; errores.push('Fila sin nombre_razon_social'); continue; }
+        const [[existe]] = await db.query(
+          'SELECT id FROM clientes WHERE nombre_razon_social = ?', [f.nombre_razon_social]
+        );
+        if (existe) { omitidos++; continue; }
+        await db.query(
+          `INSERT INTO clientes (nombre_razon_social, tipo_cliente, ruc, telefono_principal, whatsapp, email, direccion, provincia, estado)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'activo')`,
+          [f.nombre_razon_social, f.tipo_cliente || 'natural', f.ruc || null,
+           f.telefono_principal || null, f.whatsapp || null, f.email || null,
+           f.direccion || null, f.provincia || null]
+        );
+        importados++;
+      } catch (e) { errores.push(`Error en "${f.nombre_razon_social}": ${e.message}`); omitidos++; }
+    }
+
+    res.json({ success: true, data: { importados, omitidos, errores }, message: `${importados} cliente(s) importado(s)` });
+  } catch (err) {
+    console.error('Error importando clientes CSV:', err.message);
+    res.status(500).json({ success: false, message: 'Error importando: ' + err.message });
+  }
+});
+
 // GET /api/importar/plantillas — descargar plantilla CSV de ejemplo
 router.get('/plantilla/dispositivos', auth, (req, res) => {
   const csv = `serial_gps,simcard,placa_vehiculo,modelo_auto,tipo_producto,modalidad,valor_equipo_usd
