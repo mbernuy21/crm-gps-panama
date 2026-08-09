@@ -21,6 +21,10 @@ router.get('/', async (req, res) => {
     const diasAlerta = parseInt(configAlerta?.valor || 5);
     const diasMoroso = parseInt(configMoroso?.valor || 3);
 
+    // AISLAMIENTO: sub_agente solo ve alertas de sus propios clientes
+    const esSubAgente = req.usuario.rol === 'sub_agente';
+    const filtroAgente = esSubAgente ? `AND c.creado_por = ${req.usuario.id}` : '';
+
     // Próximos a vencer (dentro de los días de alerta)
     const [proximos] = await db.query(`
       SELECT con.*, c.nombre_razon_social AS cliente_nombre, c.whatsapp, c.estado AS cliente_estado,
@@ -30,6 +34,7 @@ router.get('/', async (req, res) => {
       WHERE con.estado = 'activo'
         AND c.estado = 'activo'
         AND DATEDIFF(con.fecha_proximo_pago, CURDATE()) BETWEEN 1 AND ?
+        ${filtroAgente}
       ORDER BY con.fecha_proximo_pago ASC
     `, [diasAlerta]);
 
@@ -40,6 +45,7 @@ router.get('/', async (req, res) => {
       INNER JOIN clientes c ON c.id = con.cliente_id
       WHERE con.estado = 'activo'
         AND DATE(con.fecha_proximo_pago) = CURDATE()
+        ${filtroAgente}
       ORDER BY c.nombre_razon_social ASC
     `);
 
@@ -51,6 +57,7 @@ router.get('/', async (req, res) => {
       INNER JOIN clientes c ON c.id = con.cliente_id
       WHERE con.estado = 'activo'
         AND DATEDIFF(CURDATE(), con.fecha_proximo_pago) BETWEEN ? AND 30
+        ${filtroAgente}
       ORDER BY dias_mora DESC
     `, [diasMoroso]);
 
@@ -61,6 +68,7 @@ router.get('/', async (req, res) => {
       FROM contratos con
       INNER JOIN clientes c ON c.id = con.cliente_id
       WHERE (con.estado = 'suspendido' OR c.estado IN ('suspendido', 'cortado'))
+        ${filtroAgente}
       ORDER BY dias_mora DESC
     `);
 

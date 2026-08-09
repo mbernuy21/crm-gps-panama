@@ -32,6 +32,13 @@ function RutaProtegida({ children }) {
   return token ? children : <Navigate to="/login" replace />;
 }
 
+// Ruta solo para admins — sub-agentes son redirigidos al dashboard
+function RutaAdmin({ children }) {
+  const usuario = (() => { try { return JSON.parse(localStorage.getItem('usuario') || '{}'); } catch { return {}; } })();
+  if (usuario.rol === 'sub_agente') return <Navigate to="/dashboard" replace />;
+  return children;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -53,21 +60,23 @@ export default function App() {
           <Route path="dispositivos" element={<Dispositivos />} />
           <Route path="contratos" element={<Contratos />} />
           <Route path="pagos" element={<Pagos />} />
-          <Route path="facturas" element={<Facturas />} />
+          {/* Rutas solo para admin */}
+          <Route path="facturas" element={<RutaAdmin><Facturas /></RutaAdmin>} />
+          <Route path="inventario" element={<RutaAdmin><Inventario /></RutaAdmin>} />
+          <Route path="plantillas" element={<RutaAdmin><Plantillas /></RutaAdmin>} />
+          <Route path="cotizaciones" element={<RutaAdmin><Cotizaciones /></RutaAdmin>} />
+          <Route path="cotizaciones/nueva" element={<RutaAdmin><CotizacionForm /></RutaAdmin>} />
+          <Route path="cotizaciones/:id/editar" element={<RutaAdmin><CotizacionForm /></RutaAdmin>} />
+          <Route path="auditoria" element={<RutaAdmin><Auditoria /></RutaAdmin>} />
+          <Route path="asistente" element={<RutaAdmin><AsistenteIA /></RutaAdmin>} />
+          <Route path="guia" element={<RutaAdmin><Guia /></RutaAdmin>} />
+          <Route path="catalogo" element={<RutaAdmin><Catalogo /></RutaAdmin>} />
+          <Route path="agentes" element={<RutaAdmin><Agentes /></RutaAdmin>} />
+          {/* Rutas accesibles para todos (filtradas por rol en backend) */}
           <Route path="leads" element={<Leads />} />
-          <Route path="inventario" element={<Inventario />} />
           <Route path="alertas" element={<Alertas />} />
-          <Route path="plantillas" element={<Plantillas />} />
-          <Route path="cotizaciones" element={<Cotizaciones />} />
-          <Route path="cotizaciones/nueva" element={<CotizacionForm />} />
-          <Route path="cotizaciones/:id/editar" element={<CotizacionForm />} />
           <Route path="tareas" element={<Tareas />} />
           <Route path="simcards" element={<Simcards />} />
-          <Route path="auditoria" element={<Auditoria />} />
-          <Route path="asistente" element={<AsistenteIA />} />
-          <Route path="guia" element={<Guia />} />
-          <Route path="catalogo" element={<Catalogo />} />
-          <Route path="agentes" element={<Agentes />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

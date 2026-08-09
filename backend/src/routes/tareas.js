@@ -22,6 +22,12 @@ router.get('/', auth, async (req, res) => {
     let where = '1=1';
     const params = [];
 
+    // AISLAMIENTO: sub_agente solo ve sus propias tareas
+    if (req.usuario.rol === 'sub_agente') {
+      where += ' AND t.creada_por = ?';
+      params.push(req.usuario.id);
+    }
+
     if (estado) { where += ' AND t.estado = ?'; params.push(estado); }
     if (prioridad) { where += ' AND t.prioridad = ?'; params.push(prioridad); }
     if (cliente_id) { where += ' AND t.cliente_id = ?'; params.push(cliente_id); }

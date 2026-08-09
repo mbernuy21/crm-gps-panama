@@ -36,10 +36,17 @@ export default function Simcards() {
   async function cargar() {
     try {
       const params = {};
-      if (filtroEstado) params.estado = filtroEstado;
+      // Filtros especiales de agente se manejan en frontend (no son estados de BD)
+      if (filtroEstado && filtroEstado !== 'con_agente' && filtroEstado !== 'sin_agente') {
+        params.estado = filtroEstado;
+      }
       if (buscar) params.buscar = buscar;
       const r = await api.get('/simcards', { params });
-      setSims(r.data.data || []);
+      let data = r.data.data || [];
+      // Aplicar filtro de agente en frontend
+      if (filtroEstado === 'con_agente') data = data.filter(s => s.agente_nombre);
+      if (filtroEstado === 'sin_agente') data = data.filter(s => !s.agente_nombre);
+      setSims(data);
     } catch { toast.error('Error cargando SIM cards'); }
     finally { setCargando(false); }
   }
@@ -150,6 +157,8 @@ export default function Simcards() {
           style={{ padding: '9px 14px', border: '1px solid var(--borde)', borderRadius: '8px', fontSize: '14px' }}>
           <option value="">Todos los estados</option>
           {Object.entries(ESTADO_COLORES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+          <option value="con_agente">👤 Con agente asignado</option>
+          <option value="sin_agente">🔓 Sin agente asignado</option>
         </select>
         <button onClick={cargar} style={{ padding: '9px 16px', background: '#f3f4f6', border: '1px solid var(--borde)', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' }}>Buscar</button>
       </div>

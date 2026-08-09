@@ -41,8 +41,9 @@ const menuAdmin = [
 const menuSubAgente = [
   { sep: 'Mi operación' },
   { path: '/dashboard',    label: 'Mi Dashboard',     icono: '📊' },
+  { path: '/alertas',      label: 'Mis Alertas',      icono: '🔔' },
   { path: '/pagos',        label: 'Pagos',            icono: '💳' },
-  { path: '/tareas',       label: 'Tareas',           icono: '✅' },
+  { path: '/tareas',       label: 'Mis Tareas',       icono: '✅' },
 
   { sep: 'Mis clientes' },
   { path: '/clientes',     label: 'Mis Clientes',     icono: '👥' },
@@ -50,6 +51,7 @@ const menuSubAgente = [
 
   { sep: 'Equipos' },
   { path: '/dispositivos', label: 'Dispositivos GPS', icono: '📡' },
+  { path: '/simcards',     label: 'Mis SIM Cards',    icono: '📱' },
 
   { sep: 'Ventas' },
   { path: '/leads',        label: 'Leads',            icono: '🎯' },
