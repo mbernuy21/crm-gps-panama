@@ -47,15 +47,18 @@ router.get('/', async (req, res) => {
       return parseInt(row?.valor || 5);
     }, 5);
 
-    // Conteo de alertas
+    // Conteo de alertas (filtrado por rol)
+    const filtroClienteJoin = esSubAgente ? `AND c.creado_por = ${agenteId}` : '';
     const alertas_count = await safeQuery(async () => {
       const [[row]] = await db.query(`
         SELECT
           (SELECT COUNT(*) FROM contratos con INNER JOIN clientes c ON c.id = con.cliente_id
             WHERE con.estado = 'activo' AND c.estado = 'activo'
-            AND DATEDIFF(con.fecha_proximo_pago, CURDATE()) BETWEEN 1 AND ?) AS proximos_vencer,
+            AND DATEDIFF(con.fecha_proximo_pago, CURDATE()) BETWEEN 1 AND ?
+            ${filtroClienteJoin}) AS proximos_vencer,
           (SELECT COUNT(*) FROM contratos con INNER JOIN clientes c ON c.id = con.cliente_id
-            WHERE con.estado = 'activo' AND DATEDIFF(CURDATE(), con.fecha_proximo_pago) > 0) AS vencidos
+            WHERE con.estado = 'activo' AND DATEDIFF(CURDATE(), con.fecha_proximo_pago) > 0
+            ${filtroClienteJoin}) AS vencidos
       `, [diasAlerta]);
       return row;
     }, { proximos_vencer: 0, vencidos: 0 });
@@ -92,7 +95,7 @@ router.get('/', async (req, res) => {
       return rows;
     }, []);
 
-    // Alertas del día (detalle)
+    // Alertas del día (detalle, filtradas por rol)
     const alertas_detalle = await safeQuery(async () => {
       const [rows] = await db.query(`
         SELECT con.id, con.monto_total, con.fecha_proximo_pago,
@@ -107,19 +110,21 @@ router.get('/', async (req, res) => {
             DATEDIFF(con.fecha_proximo_pago, CURDATE()) BETWEEN 0 AND ?
             OR DATEDIFF(CURDATE(), con.fecha_proximo_pago) > 0
           )
+          ${filtroClienteJoin}
         ORDER BY con.fecha_proximo_pago ASC
         LIMIT 20
       `, [diasAlerta]);
       return rows;
     }, []);
 
-    // Pareto 80/20
+    // Pareto 80/20 (filtrado por rol)
     const pareto_raw = await safeQuery(async () => {
       const [rows] = await db.query(`
         SELECT c.id, c.nombre_razon_social, c.estado,
           COALESCE(SUM(p.monto), 0) AS total_pagado
         FROM clientes c
         LEFT JOIN pagos p ON p.cliente_id = c.id
+        WHERE 1=1 ${filtroCliente}
         GROUP BY c.id, c.nombre_razon_social, c.estado
         ORDER BY total_pagado DESC
       `);
@@ -137,18 +142,19 @@ router.get('/', async (req, res) => {
       return { ...r, total_pagado: parseFloat(r.total_pagado), acumulado, es_top20: es20 };
     });
 
-    // Tareas pendientes
+    // Tareas pendientes (filtradas por rol)
+    const filtroTarea = esSubAgente ? `AND creada_por = ${agenteId}` : '';
     const tareas_stats = await safeQuery(async () => {
       const [[row]] = await db.query(`
         SELECT
           COUNT(*) AS pendientes,
           SUM(CASE WHEN fecha_limite < CURDATE() THEN 1 ELSE 0 END) AS vencidas
-        FROM tareas WHERE estado != 'completada'
+        FROM tareas WHERE estado != 'completada' ${filtroTarea}
       `);
       return row;
     }, { pendientes: 0, vencidas: 0 });
 
-    // Stats de GPS — distribución por tipo, modalidad y estado
+    // Stats de GPS (filtrados por rol)
     const gps_stats = await safeQuery(async () => {
       const [[row]] = await db.query(`
         SELECT
@@ -160,31 +166,32 @@ router.get('/', async (req, res) => {
           SUM(CASE WHEN tipo_producto = 'portatil' AND modalidad = 'alquiler' THEN 1 ELSE 0 END) AS portatiles_alquiler,
           SUM(CASE WHEN tipo_producto = 'fijo' AND modalidad = 'alquiler' THEN 1 ELSE 0 END) AS fijos_alquiler,
           SUM(CASE WHEN tipo_producto = 'fijo' AND modalidad = 'venta' THEN 1 ELSE 0 END) AS fijos_venta
-        FROM dispositivos WHERE estado != 'perdido'
+        FROM dispositivos WHERE estado != 'perdido' ${filtroGPS}
       `);
       return row;
     }, { total_gps: 0, gps_activos: 0, gps_en_venta: 0, gps_en_alquiler: 0, gps_portatiles: 0, portatiles_alquiler: 0, fijos_alquiler: 0, fijos_venta: 0 });
 
-    // Líneas SIM activas
+    // Líneas SIM (sub-agente ve solo las asignadas a él)
+    const filtroSIM = esSubAgente ? `WHERE asignado_a_agente = ${agenteId}` : '';
     const sim_stats = await safeQuery(async () => {
       const [[row]] = await db.query(`
         SELECT
           COUNT(*) AS total_sims,
           SUM(CASE WHEN estado = 'asignada' THEN 1 ELSE 0 END) AS sims_activas,
           SUM(CASE WHEN estado = 'disponible' THEN 1 ELSE 0 END) AS sims_disponibles
-        FROM simcards
+        FROM simcards ${filtroSIM}
       `);
       return row;
     }, { total_sims: 0, sims_activas: 0, sims_disponibles: 0 });
 
-    // Distribución GPS por plataforma (para gráfica)
+    // Distribución GPS por plataforma (filtrada por rol)
     const gps_por_plataforma = await safeQuery(async () => {
       const [rows] = await db.query(`
         SELECT
           COALESCE(plataforma, 'Sin plataforma') AS plataforma,
           COUNT(*) AS cantidad
         FROM dispositivos
-        WHERE estado != 'perdido'
+        WHERE estado != 'perdido' ${filtroGPS}
         GROUP BY plataforma
         ORDER BY cantidad DESC
       `);
