@@ -7,13 +7,19 @@ const auditoria = require('../services/auditoria');
 
 router.use(authMiddleware);
 
-// GET /api/dispositivos
+// GET /api/dispositivos (sub_agente solo ve los suyos)
 router.get('/', async (req, res) => {
   try {
     const { estado, cliente_id, tipo_producto, modalidad, buscar } = req.query;
 
     let where = ['1=1'];
     let params = [];
+
+    // AISLAMIENTO: sub_agente solo ve dispositivos que él creó
+    if (req.usuario.rol === 'sub_agente') {
+      where.push('d.creado_por = ?');
+      params.push(req.usuario.id);
+    }
 
     if (estado) { where.push('d.estado = ?'); params.push(estado); }
     if (cliente_id) { where.push('d.cliente_id = ?'); params.push(cliente_id); }
@@ -105,11 +111,11 @@ router.post('/', async (req, res) => {
 
     const [result] = await db.query(
       `INSERT INTO dispositivos (cliente_id, serial_gps, simcard, placa_vehiculo, modelo_auto,
-        tipo_producto, modalidad, valor_equipo_usd, estado, fecha_asignacion, notas, plataforma)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        tipo_producto, modalidad, valor_equipo_usd, estado, fecha_asignacion, notas, plataforma, creado_por)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [cliente_id || null, serial_gps, simLimpia, placa_vehiculo, modelo_auto,
        tipo_producto || 'fijo', modalidad || 'alquiler', valor_equipo_usd || 0,
-       estado || 'disponible', fecha_asignacion || null, notas, plataforma || null]
+       estado || 'disponible', fecha_asignacion || null, notas, plataforma || null, req.usuario.id]
     );
 
     // Registrar en historial

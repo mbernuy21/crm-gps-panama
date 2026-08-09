@@ -12,23 +12,31 @@ async function safeQuery(queryFn, fallback) {
   catch (err) { console.error('Dashboard query error:', err.message); return fallback; }
 }
 
-// GET /api/dashboard — resumen completo del dashboard
+// GET /api/dashboard — resumen completo (filtrado por rol si es sub_agente)
 router.get('/', async (req, res) => {
   try {
-    // KPIs principales
+    const esSubAgente = req.usuario.rol === 'sub_agente';
+    const agenteId = req.usuario.id;
+
+    // Para sub_agente: filtramos todo por creado_por / registrado_por
+    const filtroCliente = esSubAgente ? `AND creado_por = ${agenteId}` : '';
+    const filtroPago   = esSubAgente ? `AND registrado_por = ${agenteId}` : '';
+    const filtroGPS    = esSubAgente ? `AND creado_por = ${agenteId}` : '';
+
+    // KPIs principales (filtrados por rol)
     const kpis = await safeQuery(async () => {
       const [[row]] = await db.query(`
         SELECT
-          (SELECT COUNT(*) FROM clientes WHERE estado = 'activo') AS clientes_activos,
-          (SELECT COUNT(*) FROM clientes WHERE estado = 'moroso') AS clientes_morosos,
-          (SELECT COUNT(*) FROM clientes WHERE estado = 'suspendido') AS clientes_suspendidos,
-          (SELECT COUNT(*) FROM clientes WHERE estado = 'cortado') AS clientes_cortados,
-          (SELECT COUNT(*) FROM leads WHERE estado = 'nuevo') AS leads_nuevos,
-          (SELECT COUNT(*) FROM leads WHERE estado IN ('nuevo','contactado','interesado')) AS leads_activos,
-          (SELECT COALESCE(SUM(monto), 0) FROM pagos WHERE MONTH(fecha_pago) = MONTH(CURDATE()) AND YEAR(fecha_pago) = YEAR(CURDATE())) AS cobros_mes_actual,
-          (SELECT COALESCE(SUM(monto), 0) FROM pagos WHERE MONTH(fecha_pago) = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) AND YEAR(fecha_pago) = YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))) AS cobros_mes_anterior,
-          (SELECT COUNT(*) FROM dispositivos WHERE estado = 'disponible') AS dispositivos_disponibles,
-          (SELECT COUNT(*) FROM dispositivos WHERE estado = 'perdido') AS dispositivos_perdidos
+          (SELECT COUNT(*) FROM clientes WHERE estado = 'activo' ${filtroCliente}) AS clientes_activos,
+          (SELECT COUNT(*) FROM clientes WHERE estado = 'moroso' ${filtroCliente}) AS clientes_morosos,
+          (SELECT COUNT(*) FROM clientes WHERE estado = 'suspendido' ${filtroCliente}) AS clientes_suspendidos,
+          (SELECT COUNT(*) FROM clientes WHERE estado = 'cortado' ${filtroCliente}) AS clientes_cortados,
+          (SELECT COUNT(*) FROM leads WHERE estado = 'nuevo' ${filtroCliente}) AS leads_nuevos,
+          (SELECT COUNT(*) FROM leads WHERE estado IN ('nuevo','contactado','interesado') ${filtroCliente}) AS leads_activos,
+          (SELECT COALESCE(SUM(monto), 0) FROM pagos WHERE MONTH(fecha_pago) = MONTH(CURDATE()) AND YEAR(fecha_pago) = YEAR(CURDATE()) ${filtroPago}) AS cobros_mes_actual,
+          (SELECT COALESCE(SUM(monto), 0) FROM pagos WHERE MONTH(fecha_pago) = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) AND YEAR(fecha_pago) = YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) ${filtroPago}) AS cobros_mes_anterior,
+          (SELECT COUNT(*) FROM dispositivos WHERE estado = 'disponible' ${filtroGPS}) AS dispositivos_disponibles,
+          (SELECT COUNT(*) FROM dispositivos WHERE estado = 'perdido' ${filtroGPS}) AS dispositivos_perdidos
       `);
       return row;
     }, { clientes_activos: 0, clientes_morosos: 0, clientes_suspendidos: 0, clientes_cortados: 0, leads_nuevos: 0, leads_activos: 0, cobros_mes_actual: 0, cobros_mes_anterior: 0, dispositivos_disponibles: 0, dispositivos_perdidos: 0 });
@@ -52,7 +60,7 @@ router.get('/', async (req, res) => {
       return row;
     }, { proximos_vencer: 0, vencidos: 0 });
 
-    // Ingresos por mes (últimos 6 meses)
+    // Ingresos por mes (últimos 6 meses, filtrados por rol)
     const ingresos_mensuales = await safeQuery(async () => {
       const [rows] = await db.query(`
         SELECT
@@ -60,24 +68,25 @@ router.get('/', async (req, res) => {
           DATE_FORMAT(fecha_pago, '%b %Y') AS mes_label,
           COALESCE(SUM(monto), 0) AS total
         FROM pagos
-        WHERE fecha_pago >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+        WHERE fecha_pago >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH) ${filtroPago}
         GROUP BY DATE_FORMAT(fecha_pago, '%Y-%m')
         ORDER BY mes ASC
       `);
       return rows;
     }, []);
 
-    // Distribución de estados de clientes
+    // Distribución de estados de clientes (filtrado por rol)
     const estados_clientes = await safeQuery(async () => {
-      const [rows] = await db.query(`SELECT estado, COUNT(*) AS cantidad FROM clientes GROUP BY estado`);
+      const [rows] = await db.query(`SELECT estado, COUNT(*) AS cantidad FROM clientes WHERE 1=1 ${filtroCliente} GROUP BY estado`);
       return rows;
     }, []);
 
-    // Últimos pagos registrados
+    // Últimos pagos registrados (filtrados por rol)
     const ultimos_pagos = await safeQuery(async () => {
       const [rows] = await db.query(`
         SELECT p.*, c.nombre_razon_social AS cliente_nombre
         FROM pagos p INNER JOIN clientes c ON c.id = p.cliente_id
+        WHERE 1=1 ${filtroPago}
         ORDER BY p.created_at DESC LIMIT 5
       `);
       return rows;

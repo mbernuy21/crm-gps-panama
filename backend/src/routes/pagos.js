@@ -15,6 +15,12 @@ router.get('/', async (req, res) => {
     let where = ['1=1'];
     let params = [];
 
+    // AISLAMIENTO: sub_agente solo ve pagos registrados por él mismo
+    if (req.usuario.rol === 'sub_agente') {
+      where.push('p.registrado_por = ?');
+      params.push(req.usuario.id);
+    }
+
     if (cliente_id) { where.push('p.cliente_id = ?'); params.push(cliente_id); }
     if (contrato_id) { where.push('p.contrato_id = ?'); params.push(contrato_id); }
     if (metodo) { where.push('p.metodo = ?'); params.push(metodo); }

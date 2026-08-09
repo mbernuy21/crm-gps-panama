@@ -7,7 +7,7 @@ const auditoria = require('../services/auditoria');
 
 router.use(authMiddleware);
 
-// GET /api/clientes — listar con filtros
+// GET /api/clientes — listar con filtros (sub_agente solo ve los suyos)
 router.get('/', async (req, res) => {
   try {
     const { estado, provincia, tipo_cliente, buscar, frecuencia_contrato, modalidad_gps, page = 1, limit = 500 } = req.query;
@@ -16,6 +16,12 @@ router.get('/', async (req, res) => {
     let where = ['1=1'];
     let params = [];
     let joins = [];
+
+    // AISLAMIENTO: sub_agente solo ve clientes que él creó
+    if (req.usuario.rol === 'sub_agente') {
+      where.push('c.creado_por = ?');
+      params.push(req.usuario.id);
+    }
 
     if (estado) { where.push('c.estado = ?'); params.push(estado); }
     if (provincia) { where.push('c.provincia = ?'); params.push(provincia); }
@@ -120,14 +126,17 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, message: 'El nombre o razón social es requerido' });
     }
 
+    // Guardar quién creó el cliente (útil para sub_agentes)
+    const creadoPor = req.usuario.id;
+
     const [result] = await db.query(
       `INSERT INTO clientes (nombre_razon_social, tipo_cliente, ruc, telefono_principal, whatsapp,
         email, direccion, provincia, distrito, contacto_secundario_nombre,
-        contacto_secundario_telefono, estado, notas_internas)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        contacto_secundario_telefono, estado, notas_internas, creado_por)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [nombre_razon_social, tipo_cliente || 'natural', ruc, telefono_principal, whatsapp,
        email, direccion, provincia, distrito, contacto_secundario_nombre,
-       contacto_secundario_telefono, estado || 'activo', notas_internas]
+       contacto_secundario_telefono, estado || 'activo', notas_internas, creadoPor]
     );
 
     const [[nuevo]] = await db.query('SELECT * FROM clientes WHERE id = ?', [result.insertId]);

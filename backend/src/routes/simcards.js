@@ -13,6 +13,13 @@ router.get('/', async (req, res) => {
     const { estado, buscar } = req.query;
     const where = [];
     const params = [];
+
+    // AISLAMIENTO: sub_agente solo ve las SIM cards que el admin le asignó
+    if (req.usuario.rol === 'sub_agente') {
+      where.push('s.asignado_a_agente = ?');
+      params.push(req.usuario.id);
+    }
+
     if (estado) { where.push('s.estado = ?'); params.push(estado); }
     if (buscar) {
       where.push('(s.numero LIKE ? OR s.iccid LIKE ? OR s.operador LIKE ?)');
@@ -21,10 +28,12 @@ router.get('/', async (req, res) => {
     }
     const whereSQL = where.length ? `WHERE ${where.join(' AND ')}` : '';
     const [rows] = await db.query(
-      `SELECT s.*, d.serial_gps, d.placa_vehiculo, c.nombre_razon_social AS cliente_nombre
+      `SELECT s.*, d.serial_gps, d.placa_vehiculo, c.nombre_razon_social AS cliente_nombre,
+              u.nombre AS agente_nombre
        FROM simcards s
        LEFT JOIN dispositivos d ON d.id = s.dispositivo_id
        LEFT JOIN clientes c ON c.id = s.cliente_id
+       LEFT JOIN usuarios u ON u.id = s.asignado_a_agente
        ${whereSQL}
        ORDER BY s.numero ASC`,
       params

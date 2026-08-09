@@ -1,9 +1,8 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 
-// Menú ordenado por jerarquía de uso diario
-// sep: true = separador visual con etiqueta de grupo
-const menu = [
+// Menú completo para administradores
+const menuAdmin = [
   // ── OPERACIÓN DIARIA ──────────────────────────────
   { sep: 'Operación diaria' },
   { path: '/dashboard',    label: 'Dashboard',       icono: '📊' },
@@ -32,13 +31,37 @@ const menu = [
 
   // ── HERRAMIENTAS ──────────────────────────────────
   { sep: 'Herramientas' },
+  { path: '/agentes',      label: 'Sub-Agentes',      icono: '👤' },
   { path: '/asistente',    label: 'Asistente IA',     icono: '🤖' },
   { path: '/auditoria',    label: 'Auditoría',        icono: '🛡️' },
   { path: '/guia',         label: 'Guía del CRM',     icono: '📘' },
 ];
 
+// Menú reducido para sub-agentes (solo ve lo suyo)
+const menuSubAgente = [
+  { sep: 'Mi operación' },
+  { path: '/dashboard',    label: 'Mi Dashboard',     icono: '📊' },
+  { path: '/pagos',        label: 'Pagos',            icono: '💳' },
+  { path: '/tareas',       label: 'Tareas',           icono: '✅' },
+
+  { sep: 'Mis clientes' },
+  { path: '/clientes',     label: 'Mis Clientes',     icono: '👥' },
+  { path: '/contratos',    label: 'Contratos',        icono: '📋' },
+
+  { sep: 'Equipos' },
+  { path: '/dispositivos', label: 'Dispositivos GPS', icono: '📡' },
+
+  { sep: 'Ventas' },
+  { path: '/leads',        label: 'Leads',            icono: '🎯' },
+];
+
 export default function Sidebar({ abierto, onCerrar, onNavegar, darkMode, toggleDark, fontScale = '1', setFontScale }) {
   const navigate = useNavigate();
+
+  // Determinar el menú según el rol del usuario logueado
+  const usuario = (() => { try { return JSON.parse(localStorage.getItem('usuario') || '{}'); } catch { return {}; } })();
+  const esAdmin = usuario.rol !== 'sub_agente';
+  const menu = esAdmin ? menuAdmin : menuSubAgente;
 
   // Opciones de tamaño de letra (escala todo el CRM)
   const TAMANOS = [
@@ -90,6 +113,14 @@ export default function Sidebar({ abierto, onCerrar, onNavegar, darkMode, toggle
             <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '11px' }}>Panamá — CRM</div>
           </div>
         </div>
+        {/* Badge de rol */}
+        {!esAdmin && (
+          <div style={{ marginTop: '8px', background: 'rgba(255,255,255,0.15)', borderRadius: '6px', padding: '4px 8px', display: 'inline-block' }}>
+            <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: '11px', fontWeight: 600 }}>
+              👤 {usuario.nombre || 'Sub-Agente'}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Navegación */}

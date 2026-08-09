@@ -96,9 +96,10 @@ export default function Simcards() {
   const tarjetas = [
     { label: 'Total líneas', valor: stats.total || 0, color: '#4F6EF7' },
     { label: '🟢 Disponibles', valor: stats.disponibles || 0, color: '#16a34a' },
-    { label: '🔵 Asignadas', valor: stats.asignadas || 0, color: '#2563eb' },
+    { label: '🔵 Asignadas GPS', valor: stats.asignadas || 0, color: '#2563eb' },
     { label: '🟡 Suspendidas', valor: stats.suspendidas || 0, color: '#d97706' },
     { label: '🔴 Duplicadas', valor: stats.duplicadas || 0, color: '#dc2626' },
+    { label: '👤 Con agente', valor: sims.filter(s => s.agente_nombre).length, color: '#7c3aed' },
   ];
 
   return (
@@ -127,7 +128,7 @@ export default function Simcards() {
       </div>
 
       {/* Tarjetas resumen */}
-      <div style={{ display: 'grid', gridTemplateColumns: mob ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)', gap: '12px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: mob ? 'repeat(2, 1fr)' : 'repeat(6, 1fr)', gap: '12px', marginBottom: '20px' }}>
         {tarjetas.map((t, i) => (
           <div key={i} style={{ background: 'white', borderRadius: '12px', padding: '16px', boxShadow: 'var(--sombra)' }}>
             <div style={{ fontSize: '12px', color: 'var(--gris)', marginBottom: '6px' }}>{t.label}</div>
@@ -168,7 +169,7 @@ export default function Simcards() {
                 <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: '#374151' }}>Estado</th>
                 <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: '#374151' }}>Número</th>
                 <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: '#374151' }}>Operador</th>
-                <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: '#374151' }}>Asignada a (GPS / Cliente)</th>
+                <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: '#374151' }}>GPS / Cliente / Agente</th>
                 <th style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 700, color: '#374151' }}>Acciones</th>
               </tr>
             </thead>
@@ -185,9 +186,17 @@ export default function Simcards() {
                     <td style={{ padding: '10px 14px', fontWeight: 700, color: '#111827' }}>{s.numero}</td>
                     <td style={{ padding: '10px 14px', color: '#555' }}>{s.operador || '—'}</td>
                     <td style={{ padding: '10px 14px', color: '#555' }}>
-                      {s.serial_gps ? (
-                        <span>{s.serial_gps}{s.placa_vehiculo ? ` (${s.placa_vehiculo})` : ''}{s.cliente_nombre ? ` — ${s.cliente_nombre}` : ''}</span>
-                      ) : <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Libre</span>}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {s.serial_gps ? (
+                          <span>{s.serial_gps}{s.placa_vehiculo ? ` (${s.placa_vehiculo})` : ''}{s.cliente_nombre ? ` — ${s.cliente_nombre}` : ''}</span>
+                        ) : <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Libre</span>}
+                        {/* Badge de agente asignado */}
+                        {s.agente_nombre && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#f0f4ff', color: '#4F6EF7', border: '1px solid #c7d2fe', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 700, width: 'fit-content' }}>
+                            👤 {s.agente_nombre}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: '10px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <button onClick={() => abrirEditar(s)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', marginRight: '8px' }} title="Editar">✏️</button>
