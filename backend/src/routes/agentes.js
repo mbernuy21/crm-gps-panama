@@ -4,6 +4,7 @@ const router = express.Router();
 const db = require('../config/database');
 const bcrypt = require('bcryptjs');
 const { authMiddleware, soloAdmin } = require('../middleware/auth');
+const { invalidarCache } = require('../services/rolFiltro');
 
 router.use(authMiddleware);
 router.use(soloAdmin); // Solo admins pueden gestionar sub-agentes
@@ -52,6 +53,7 @@ router.post('/', async (req, res) => {
       [nombre, email, hash]
     );
 
+    invalidarCache();
     res.json({ success: true, data: { id: result.insertId, nombre, email, rol: 'sub_agente' }, message: 'Sub-agente creado correctamente' });
   } catch (err) {
     console.error('Error creando agente:', err);

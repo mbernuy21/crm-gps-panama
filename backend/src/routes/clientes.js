@@ -4,6 +4,7 @@ const router = express.Router();
 const db = require('../config/database');
 const { authMiddleware } = require('../middleware/auth');
 const auditoria = require('../services/auditoria');
+const { filtroRol } = require('../services/rolFiltro');
 
 router.use(authMiddleware);
 
@@ -17,15 +18,9 @@ router.get('/', async (req, res) => {
     let params = [];
     let joins = [];
 
-    // AISLAMIENTO TOTAL: cada quien ve solo lo suyo
-    if (req.usuario.rol === 'sub_agente') {
-      // Sub-agente: solo sus clientes
-      where.push('c.creado_por = ?');
-      params.push(req.usuario.id);
-    } else {
-      // Admin: excluye clientes creados por sub-agentes
-      where.push("(c.creado_por IS NULL OR c.creado_por NOT IN (SELECT id FROM usuarios WHERE rol = 'sub_agente'))");
-    }
+    // AISLAMIENTO TOTAL (usando caché para máxima velocidad)
+    const f = await filtroRol(req, 'c');
+    if (f.sql) { where.push(f.sql.replace('AND ', '')); params.push(...f.params); }
 
     if (estado) { where.push('c.estado = ?'); params.push(estado); }
     if (provincia) { where.push('c.provincia = ?'); params.push(provincia); }

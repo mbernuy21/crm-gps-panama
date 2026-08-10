@@ -4,6 +4,7 @@ const router = express.Router();
 const db = require('../config/database');
 const { authMiddleware } = require('../middleware/auth');
 const auditoria = require('../services/auditoria');
+const { filtroRol } = require('../services/rolFiltro');
 
 router.use(authMiddleware);
 
@@ -15,13 +16,8 @@ router.get('/', async (req, res) => {
     let where = ['1=1'];
     let params = [];
 
-    // AISLAMIENTO TOTAL
-    if (req.usuario.rol === 'sub_agente') {
-      where.push('p.registrado_por = ?');
-      params.push(req.usuario.id);
-    } else {
-      where.push("(p.registrado_por IS NULL OR p.registrado_por NOT IN (SELECT id FROM usuarios WHERE rol = 'sub_agente'))");
-    }
+    const f = await filtroRol(req, 'p', 'registrado_por');
+    if (f.sql) { where.push(f.sql.replace('AND ', '')); params.push(...f.params); }
 
     if (cliente_id) { where.push('p.cliente_id = ?'); params.push(cliente_id); }
     if (contrato_id) { where.push('p.contrato_id = ?'); params.push(contrato_id); }

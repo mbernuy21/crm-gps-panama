@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const { authMiddleware } = require('../middleware/auth');
+const { getSubAgenteIds } = require('../services/rolFiltro');
 
 router.use(authMiddleware);
 
@@ -18,19 +19,18 @@ router.get('/', async (req, res) => {
     const esSubAgente = req.usuario.rol === 'sub_agente';
     const agenteId = req.usuario.id;
 
-    // Subquery para excluir sub-agentes (usada en filtro admin)
-    const EXCLUIR_SUB = `(SELECT id FROM usuarios WHERE rol = 'sub_agente')`;
+    // IDs de sub-agentes desde caché (no subquery por cada petición)
+    const subIds = await getSubAgenteIds();
+    const excluirSub = subIds.length > 0 ? `NOT IN (${subIds.join(',')})` : null;
 
-    // Sub-agente ve solo lo suyo; Admin excluye lo de sub-agentes
-    const filtroCliente = esSubAgente
-      ? `AND creado_por = ${agenteId}`
-      : `AND (creado_por IS NULL OR creado_por NOT IN ${EXCLUIR_SUB})`;
-    const filtroPago = esSubAgente
-      ? `AND registrado_por = ${agenteId}`
-      : `AND (registrado_por IS NULL OR registrado_por NOT IN ${EXCLUIR_SUB})`;
-    const filtroGPS = esSubAgente
-      ? `AND creado_por = ${agenteId}`
-      : `AND (creado_por IS NULL OR creado_por NOT IN ${EXCLUIR_SUB})`;
+    // Construir filtros según rol
+    const mkFiltro = (col) => esSubAgente
+      ? `AND ${col} = ${agenteId}`
+      : excluirSub ? `AND (${col} IS NULL OR ${col} ${excluirSub})` : '';
+
+    const filtroCliente    = mkFiltro('creado_por');
+    const filtroPago       = mkFiltro('registrado_por');
+    const filtroGPS        = mkFiltro('creado_por');
 
     // KPIs principales (filtrados por rol)
     const kpis = await safeQuery(async () => {
@@ -56,10 +56,10 @@ router.get('/', async (req, res) => {
       return parseInt(row?.valor || 5);
     }, 5);
 
-    // Conteo de alertas (filtrado por rol)
+    // Filtro con alias para JOINs
     const filtroClienteJoin = esSubAgente
       ? `AND c.creado_por = ${agenteId}`
-      : `AND (c.creado_por IS NULL OR c.creado_por NOT IN ${EXCLUIR_SUB})`;
+      : excluirSub ? `AND (c.creado_por IS NULL OR c.creado_por ${excluirSub})` : '';
     const alertas_count = await safeQuery(async () => {
       const [[row]] = await db.query(`
         SELECT
@@ -156,7 +156,7 @@ router.get('/', async (req, res) => {
     // Tareas pendientes (filtradas por rol)
     const filtroTarea = esSubAgente
       ? `AND creada_por = ${agenteId}`
-      : `AND (creada_por IS NULL OR creada_por NOT IN ${EXCLUIR_SUB})`;
+      : excluirSub ? `AND (creada_por IS NULL OR creada_por ${excluirSub})` : '';
     const tareas_stats = await safeQuery(async () => {
       const [[row]] = await db.query(`
         SELECT

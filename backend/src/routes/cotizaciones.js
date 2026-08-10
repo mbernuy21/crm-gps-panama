@@ -22,10 +22,9 @@ async function siguienteNumero() {
 // GET /api/cotizaciones — listar cotizaciones (filtradas por rol)
 router.get('/', async (req, res) => {
   try {
-    const esSubAgente = req.usuario.rol === 'sub_agente';
-    const filtro = esSubAgente
-      ? `WHERE c.creado_por = ${req.usuario.id}`
-      : `WHERE (c.creado_por IS NULL OR c.creado_por NOT IN (SELECT id FROM usuarios WHERE rol = 'sub_agente'))`;
+    const { filtroRol } = require('../services/rolFiltro');
+    const fc = await filtroRol(req, 'c');
+    const filtro = fc.sql ? `WHERE ${fc.sql.replace('AND ', '')}` : '';
 
     const [cotizaciones] = await db.query(`
       SELECT c.*,

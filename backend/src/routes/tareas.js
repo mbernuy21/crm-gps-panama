@@ -22,13 +22,10 @@ router.get('/', auth, async (req, res) => {
     let where = '1=1';
     const params = [];
 
-    // AISLAMIENTO TOTAL
-    if (req.usuario.rol === 'sub_agente') {
-      where += ' AND t.creada_por = ?';
-      params.push(req.usuario.id);
-    } else {
-      where += " AND (t.creada_por IS NULL OR t.creada_por NOT IN (SELECT id FROM usuarios WHERE rol = 'sub_agente'))";
-    }
+    // AISLAMIENTO usando caché
+    const { filtroRol } = require('../services/rolFiltro');
+    const ft = await filtroRol(req, 't', 'creada_por');
+    if (ft.sql) { where += ' ' + ft.sql; params.push(...ft.params); }
 
     if (estado) { where += ' AND t.estado = ?'; params.push(estado); }
     if (prioridad) { where += ' AND t.prioridad = ?'; params.push(prioridad); }
