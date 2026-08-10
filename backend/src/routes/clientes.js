@@ -11,7 +11,7 @@ router.use(authMiddleware);
 // GET /api/clientes — listar con filtros (sub_agente solo ve los suyos)
 router.get('/', async (req, res) => {
   try {
-    const { estado, provincia, tipo_cliente, buscar, frecuencia_contrato, modalidad_gps, page = 1, limit = 500 } = req.query;
+    const { estado, provincia, tipo_cliente, buscar, frecuencia_contrato, modalidad_gps, page = 1, limit = 200 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     let where = ['1=1'];
@@ -75,32 +75,28 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [[cliente]] = await db.query('SELECT * FROM clientes WHERE id = ?', [id]);
+    // Cargar cliente + todos sus datos en paralelo
+    const [
+      clienteRes,
+      dispositivosRes,
+      contratosRes,
+      pagosRes,
+      facturasRes
+    ] = await Promise.all([
+      db.query('SELECT * FROM clientes WHERE id = ?', [id]),
+      db.query('SELECT * FROM dispositivos WHERE cliente_id = ? ORDER BY fecha_asignacion DESC', [id]),
+      db.query('SELECT * FROM contratos WHERE cliente_id = ? ORDER BY created_at DESC', [id]),
+      db.query(`SELECT p.*, u.nombre AS registrado_por_nombre FROM pagos p LEFT JOIN usuarios u ON u.id = p.registrado_por WHERE p.cliente_id = ? ORDER BY p.fecha_pago DESC LIMIT 20`, [id]),
+      db.query('SELECT id, numero_factura, fecha_emision, total, estado FROM facturas WHERE cliente_id = ? ORDER BY created_at DESC', [id])
+    ]);
+
+    const [[cliente]] = clienteRes;
     if (!cliente) return res.status(404).json({ success: false, message: 'Cliente no encontrado' });
 
-    const [dispositivos] = await db.query(
-      'SELECT * FROM dispositivos WHERE cliente_id = ? ORDER BY fecha_asignacion DESC',
-      [id]
-    );
-
-    const [contratos] = await db.query(
-      'SELECT * FROM contratos WHERE cliente_id = ? ORDER BY created_at DESC',
-      [id]
-    );
-
-    const [pagos] = await db.query(
-      `SELECT p.*, u.nombre AS registrado_por_nombre
-       FROM pagos p
-       LEFT JOIN usuarios u ON u.id = p.registrado_por
-       WHERE p.cliente_id = ?
-       ORDER BY p.fecha_pago DESC LIMIT 20`,
-      [id]
-    );
-
-    const [facturas] = await db.query(
-      'SELECT id, numero_factura, fecha_emision, total, estado FROM facturas WHERE cliente_id = ? ORDER BY created_at DESC',
-      [id]
-    );
+    const [dispositivos] = dispositivosRes;
+    const [contratos] = contratosRes;
+    const [pagos] = pagosRes;
+    const [facturas] = facturasRes;
 
     res.json({
       success: true,
