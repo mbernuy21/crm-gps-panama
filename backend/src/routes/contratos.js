@@ -15,10 +15,12 @@ router.get('/', async (req, res) => {
     let where = ['1=1'];
     let params = [];
 
-    // AISLAMIENTO: sub_agente solo ve contratos de sus propios clientes
+    // AISLAMIENTO TOTAL
     if (req.usuario.rol === 'sub_agente') {
       where.push('c.creado_por = ?');
       params.push(req.usuario.id);
+    } else {
+      where.push("(c.creado_por IS NULL OR c.creado_por NOT IN (SELECT id FROM usuarios WHERE rol = 'sub_agente'))");
     }
 
     if (estado) { where.push('con.estado = ?'); params.push(estado); }

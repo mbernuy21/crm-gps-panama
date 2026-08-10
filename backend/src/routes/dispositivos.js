@@ -15,10 +15,12 @@ router.get('/', async (req, res) => {
     let where = ['1=1'];
     let params = [];
 
-    // AISLAMIENTO: sub_agente solo ve dispositivos que él creó
+    // AISLAMIENTO TOTAL: cada quien ve solo lo suyo
     if (req.usuario.rol === 'sub_agente') {
       where.push('d.creado_por = ?');
       params.push(req.usuario.id);
+    } else {
+      where.push("(d.creado_por IS NULL OR d.creado_por NOT IN (SELECT id FROM usuarios WHERE rol = 'sub_agente'))");
     }
 
     if (estado) { where.push('d.estado = ?'); params.push(estado); }

@@ -55,6 +55,10 @@ const menuSubAgente = [
 
   { sep: 'Ventas' },
   { path: '/leads',        label: 'Leads',            icono: '🎯' },
+  { path: '/cotizaciones', label: 'Cotizaciones',     icono: '📝' },
+
+  { sep: 'Herramientas' },
+  { path: '/auditoria',    label: 'Mi Auditoría',     icono: '🛡️' },
 ];
 
 export default function Sidebar({ abierto, onCerrar, onNavegar, darkMode, toggleDark, fontScale = '1', setFontScale }) {

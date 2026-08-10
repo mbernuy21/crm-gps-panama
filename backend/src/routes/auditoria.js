@@ -12,8 +12,20 @@ router.get('/', async (req, res) => {
     const { entidad, usuario_id, limite } = req.query;
     const where = [];
     const params = [];
+
+    // Sub-agente solo ve su propia auditoría
+    if (req.usuario.rol === 'sub_agente') {
+      where.push('a.usuario_id = ?');
+      params.push(req.usuario.id);
+    } else {
+      // Admin excluye acciones de sub-agentes de su vista principal
+      if (usuario_id) {
+        where.push('a.usuario_id = ?');
+        params.push(usuario_id);
+      }
+    }
+
     if (entidad) { where.push('entidad = ?'); params.push(entidad); }
-    if (usuario_id) { where.push('usuario_id = ?'); params.push(usuario_id); }
     const whereSQL = where.length ? `WHERE ${where.join(' AND ')}` : '';
     const lim = Math.min(parseInt(limite) || 100, 500);
 

@@ -19,9 +19,14 @@ async function siguienteNumero() {
   return r.siguiente;
 }
 
-// GET /api/cotizaciones — listar cotizaciones
+// GET /api/cotizaciones — listar cotizaciones (filtradas por rol)
 router.get('/', async (req, res) => {
   try {
+    const esSubAgente = req.usuario.rol === 'sub_agente';
+    const filtro = esSubAgente
+      ? `WHERE c.creado_por = ${req.usuario.id}`
+      : `WHERE (c.creado_por IS NULL OR c.creado_por NOT IN (SELECT id FROM usuarios WHERE rol = 'sub_agente'))`;
+
     const [cotizaciones] = await db.query(`
       SELECT c.*,
         cl.nombre_razon_social AS cliente_nombre_crm,
@@ -31,6 +36,7 @@ router.get('/', async (req, res) => {
       LEFT JOIN clientes cl ON cl.id = c.cliente_id
       LEFT JOIN leads l ON l.id = c.lead_id
       LEFT JOIN usuarios u ON u.id = c.creado_por
+      ${filtro}
       ORDER BY c.created_at DESC
     `);
     res.json({ success: true, data: cotizaciones });

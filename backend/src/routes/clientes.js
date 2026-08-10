@@ -17,10 +17,14 @@ router.get('/', async (req, res) => {
     let params = [];
     let joins = [];
 
-    // AISLAMIENTO: sub_agente solo ve clientes que él creó
+    // AISLAMIENTO TOTAL: cada quien ve solo lo suyo
     if (req.usuario.rol === 'sub_agente') {
+      // Sub-agente: solo sus clientes
       where.push('c.creado_por = ?');
       params.push(req.usuario.id);
+    } else {
+      // Admin: excluye clientes creados por sub-agentes
+      where.push("(c.creado_por IS NULL OR c.creado_por NOT IN (SELECT id FROM usuarios WHERE rol = 'sub_agente'))");
     }
 
     if (estado) { where.push('c.estado = ?'); params.push(estado); }

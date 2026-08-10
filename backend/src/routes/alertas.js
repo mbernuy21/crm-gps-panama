@@ -21,9 +21,12 @@ router.get('/', async (req, res) => {
     const diasAlerta = parseInt(configAlerta?.valor || 5);
     const diasMoroso = parseInt(configMoroso?.valor || 3);
 
-    // AISLAMIENTO: sub_agente solo ve alertas de sus propios clientes
+    // AISLAMIENTO TOTAL por rol
     const esSubAgente = req.usuario.rol === 'sub_agente';
-    const filtroAgente = esSubAgente ? `AND c.creado_por = ${req.usuario.id}` : '';
+    const EXCLUIR_SUB = `(SELECT id FROM usuarios WHERE rol = 'sub_agente')`;
+    const filtroAgente = esSubAgente
+      ? `AND c.creado_por = ${req.usuario.id}`
+      : `AND (c.creado_por IS NULL OR c.creado_por NOT IN ${EXCLUIR_SUB})`;
 
     // Próximos a vencer (dentro de los días de alerta)
     const [proximos] = await db.query(`

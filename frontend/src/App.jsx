@@ -64,10 +64,10 @@ export default function App() {
           <Route path="facturas" element={<RutaAdmin><Facturas /></RutaAdmin>} />
           <Route path="inventario" element={<RutaAdmin><Inventario /></RutaAdmin>} />
           <Route path="plantillas" element={<RutaAdmin><Plantillas /></RutaAdmin>} />
-          <Route path="cotizaciones" element={<RutaAdmin><Cotizaciones /></RutaAdmin>} />
-          <Route path="cotizaciones/nueva" element={<RutaAdmin><CotizacionForm /></RutaAdmin>} />
-          <Route path="cotizaciones/:id/editar" element={<RutaAdmin><CotizacionForm /></RutaAdmin>} />
-          <Route path="auditoria" element={<RutaAdmin><Auditoria /></RutaAdmin>} />
+          <Route path="cotizaciones" element={<Cotizaciones />} />
+          <Route path="cotizaciones/nueva" element={<CotizacionForm />} />
+          <Route path="cotizaciones/:id/editar" element={<CotizacionForm />} />
+          <Route path="auditoria" element={<Auditoria />} />
           <Route path="asistente" element={<RutaAdmin><AsistenteIA /></RutaAdmin>} />
           <Route path="guia" element={<RutaAdmin><Guia /></RutaAdmin>} />
           <Route path="catalogo" element={<RutaAdmin><Catalogo /></RutaAdmin>} />
