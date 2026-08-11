@@ -1,6 +1,4 @@
 node_modules/
-frontend/build/
-frontend/build_*/
 frontend/*.zip
 backend/uploads/*
 !backend/uploads/.gitkeep
