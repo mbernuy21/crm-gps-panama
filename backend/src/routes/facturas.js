@@ -4,6 +4,7 @@ const router = express.Router();
 const db = require('../config/database');
 const { authMiddleware } = require('../middleware/auth');
 const { generarPDFFactura } = require('../services/pdfFactura');
+const { filtroRol } = require('../services/rolFiltro');
 
 router.use(authMiddleware);
 
@@ -14,6 +15,10 @@ router.get('/', async (req, res) => {
 
     let where = ['1=1'];
     let params = [];
+
+    // Filtro por rol: las facturas se filtran por el propietario del cliente
+    const f = await filtroRol(req, 'c', 'creado_por');
+    if (f.sql) { where.push(f.sql.replace('AND ', '')); params.push(...f.params); }
 
     if (cliente_id) { where.push('f.cliente_id = ?'); params.push(cliente_id); }
     if (estado) { where.push('f.estado = ?'); params.push(estado); }

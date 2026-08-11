@@ -4,7 +4,7 @@ const router = express.Router();
 const db = require('../config/database');
 const { authMiddleware } = require('../middleware/auth');
 const auditoria = require('../services/auditoria');
-const { filtroRol } = require('../services/rolFiltro');
+const { filtroRol, puedeModificar } = require('../services/rolFiltro');
 
 router.use(authMiddleware);
 
@@ -135,6 +135,11 @@ router.put('/:id', async (req, res) => {
     const [[pago]] = await db.query('SELECT * FROM pagos WHERE id = ?', [id]);
     if (!pago) return res.status(404).json({ success: false, message: 'Pago no encontrado' });
 
+    // Verificar que el usuario puede modificar este registro
+    if (!await puedeModificar(req, pago.registrado_por)) {
+      return res.status(403).json({ success: false, message: 'No tienes permiso para editar este pago' });
+    }
+
     if (!fecha_pago || !monto) {
       return res.status(400).json({ success: false, message: 'fecha_pago y monto son requeridos' });
     }
@@ -165,7 +170,13 @@ router.delete('/:id', async (req, res) => {
     const [[pago]] = await db.query('SELECT * FROM pagos WHERE id = ?', [req.params.id]);
     if (!pago) return res.status(404).json({ success: false, message: 'Pago no encontrado' });
 
+    // Verificar que el usuario puede eliminar este registro
+    if (!await puedeModificar(req, pago.registrado_por)) {
+      return res.status(403).json({ success: false, message: 'No tienes permiso para eliminar este pago' });
+    }
+
     await db.query('DELETE FROM pagos WHERE id = ?', [req.params.id]);
+    await auditoria.registrar(req, 'eliminar', 'pago', req.params.id, `Eliminó pago #${req.params.id} de B/. ${pago.monto}`);
     res.json({ success: true, message: 'Pago eliminado correctamente' });
   } catch (err) {
     console.error('Error eliminando pago:', err);

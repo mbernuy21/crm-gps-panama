@@ -48,6 +48,7 @@ const menuSubAgente = [
   { sep: 'Mis clientes' },
   { path: '/clientes',     label: 'Mis Clientes',     icono: '👥' },
   { path: '/contratos',    label: 'Contratos',        icono: '📋' },
+  { path: '/facturas',     label: 'Facturas',         icono: '🧾' },
 
   { sep: 'Equipos' },
   { path: '/dispositivos', label: 'Dispositivos GPS', icono: '📡' },

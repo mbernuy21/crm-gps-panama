@@ -44,4 +44,23 @@ async function filtroRol(req, alias = '', campo = 'creado_por') {
   return { sql: `AND (${col} IS NULL OR ${col} NOT IN (${placeholders}))`, params: [] };
 }
 
-module.exports = { filtroRol, getSubAgenteIds, invalidarCache };
+/**
+ * Verifica si el usuario actual puede modificar/eliminar un registro
+ * según quién lo registró.
+ * - sub_agente: solo puede tocar sus propios registros
+ * - admin: solo puede tocar registros suyos (no de sub-agentes)
+ * @param {object} req
+ * @param {number|null} registrado_por - ID del usuario que creó el registro
+ * @returns {Promise<boolean>}
+ */
+async function puedeModificar(req, registrado_por) {
+  if (req.usuario.rol === 'sub_agente') {
+    return registrado_por === req.usuario.id;
+  }
+  // Admin no puede tocar registros de sub-agentes
+  const ids = await getSubAgenteIds();
+  if (ids.length === 0) return true;
+  return !ids.includes(registrado_por);
+}
+
+module.exports = { filtroRol, puedeModificar, getSubAgenteIds, invalidarCache };

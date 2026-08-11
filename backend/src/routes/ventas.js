@@ -5,6 +5,7 @@ const router = express.Router();
 const db = require('../config/database');
 const { authMiddleware } = require('../middleware/auth');
 const auditoria = require('../services/auditoria');
+const { filtroRol, puedeModificar } = require('../services/rolFiltro');
 
 router.use(authMiddleware);
 
@@ -14,6 +15,10 @@ router.get('/', async (req, res) => {
     const { cliente_id, fecha_desde, fecha_hasta } = req.query;
     let where = ['1=1'];
     let params = [];
+
+    // Filtro por rol: cada usuario solo ve sus propios registros
+    const f = await filtroRol(req, 'v', 'registrado_por');
+    if (f.sql) { where.push(f.sql.replace('AND ', '')); params.push(...f.params); }
 
     if (cliente_id) { where.push('v.cliente_id = ?'); params.push(cliente_id); }
     if (fecha_desde) { where.push('v.fecha >= ?'); params.push(fecha_desde); }
@@ -83,6 +88,11 @@ router.put('/:id', async (req, res) => {
     const [[venta]] = await db.query('SELECT * FROM ventas_cobros WHERE id = ?', [req.params.id]);
     if (!venta) return res.status(404).json({ success: false, message: 'Venta no encontrada' });
 
+    // Verificar que el usuario puede modificar este registro
+    if (!await puedeModificar(req, venta.registrado_por)) {
+      return res.status(403).json({ success: false, message: 'No tienes permiso para editar esta venta' });
+    }
+
     const cant = parseFloat(cantidad) || 1;
     const precio = parseFloat(precio_unitario) || 0;
     const total = cant * precio;
@@ -112,8 +122,13 @@ router.delete('/:id', async (req, res) => {
     const [[venta]] = await db.query('SELECT * FROM ventas_cobros WHERE id = ?', [req.params.id]);
     if (!venta) return res.status(404).json({ success: false, message: 'Venta no encontrada' });
 
+    // Verificar que el usuario puede eliminar este registro
+    if (!await puedeModificar(req, venta.registrado_por)) {
+      return res.status(403).json({ success: false, message: 'No tienes permiso para eliminar esta venta' });
+    }
+
     await db.query('DELETE FROM ventas_cobros WHERE id = ?', [req.params.id]);
-    await auditoria.registrar(req, 'eliminar', 'venta', req.params.id, `Eliminó venta #${req.params.id}`);
+    await auditoria.registrar(req, 'eliminar', 'venta', req.params.id, `Eliminó venta #${req.params.id} — B/. ${venta.total}`);
     res.json({ success: true, message: 'Venta eliminada correctamente' });
   } catch (err) {
     console.error('Error eliminando venta:', err);
