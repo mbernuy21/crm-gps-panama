@@ -262,6 +262,13 @@ export default function Dashboard() {
   const ventasActual = parseFloat(ventas_stats.ventas_mes_actual || 0);
   const ingresoTotalMes = cobrosActual + ventasActual;
 
+  // ── Cálculos META DEL MES ────────────────────────────────────────────────
+  const pctMeta = mrrVal > 0 ? Math.min(100, (ingresoTotalMes / mrrVal) * 100) : 0;
+  const faltaMeta = Math.max(0, mrrVal - ingresoTotalMes);
+  const mesNombre = new Date().toLocaleString('es-PA', { month: 'long' });
+  const colorMeta = pctMeta >= 100 ? '#16a34a' : pctMeta >= 70 ? '#4F6EF7' : pctMeta >= 40 ? '#f59e0b' : '#ef4444';
+  const emojiMeta = pctMeta >= 100 ? '🏆' : pctMeta >= 70 ? '🚀' : pctMeta >= 40 ? '📈' : '⚡';
+
   return (
     <div>
       {/* ── Header ─────────────────────────────────────────────────── */}
@@ -281,6 +288,108 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* ══════════════════════════════════════════════════════════════
+          META DEL MES — barra de progreso principal
+      ══════════════════════════════════════════════════════════════ */}
+      {mrrVal > 0 && (
+        <div style={{
+          background: 'white', borderRadius: '16px', padding: '24px 28px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.08)', border: `2px solid ${colorMeta}33`,
+          marginBottom: '20px', position: 'relative', overflow: 'hidden'
+        }}>
+          {/* Fondo decorativo */}
+          <div style={{ position: 'absolute', top: 0, right: 0, width: '220px', height: '100%', background: `linear-gradient(90deg, transparent, ${colorMeta}08)`, pointerEvents: 'none' }} />
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
+            {/* Título */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <span style={{ fontSize: '20px' }}>{emojiMeta}</span>
+                <h2 style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
+                  Meta de ingresos — {mesNombre.charAt(0).toUpperCase() + mesNombre.slice(1)}
+                </h2>
+              </div>
+              <p style={{ fontSize: '12px', color: '#9ca3af' }}>
+                Cobros + Ventas del mes vs ingreso mensual proyectado (MRR)
+              </p>
+            </div>
+            {/* Badge % */}
+            <div style={{
+              background: `${colorMeta}15`, border: `2px solid ${colorMeta}`,
+              borderRadius: '12px', padding: '10px 20px', textAlign: 'center', flexShrink: 0
+            }}>
+              <p style={{ fontSize: '32px', fontWeight: 900, color: colorMeta, lineHeight: 1 }}>
+                {pctMeta.toFixed(1)}%
+              </p>
+              <p style={{ fontSize: '10px', color: colorMeta, fontWeight: 700, textTransform: 'uppercase', marginTop: '2px' }}>
+                {pctMeta >= 100 ? '¡Meta alcanzada!' : 'de la meta'}
+              </p>
+            </div>
+          </div>
+
+          {/* Barra de progreso grande */}
+          <div style={{ marginBottom: '18px' }}>
+            <div style={{ height: '18px', background: '#f1f5f9', borderRadius: '99px', overflow: 'hidden', position: 'relative' }}>
+              <div style={{
+                height: '100%',
+                width: `${pctMeta}%`,
+                background: pctMeta >= 100
+                  ? 'linear-gradient(90deg, #15803d, #22c55e)'
+                  : pctMeta >= 70
+                    ? 'linear-gradient(90deg, #3d5ce0, #4F6EF7)'
+                    : pctMeta >= 40
+                      ? 'linear-gradient(90deg, #b45309, #f59e0b)'
+                      : 'linear-gradient(90deg, #b91c1c, #ef4444)',
+                borderRadius: '99px',
+                transition: 'width 1s ease',
+                position: 'relative'
+              }}>
+                {pctMeta > 12 && (
+                  <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'white', fontWeight: 700 }}>
+                    {bal(ingresoTotalMes)}
+                  </span>
+                )}
+              </div>
+            </div>
+            {/* Marcas de referencia 25% 50% 75% */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', paddingLeft: '0', paddingRight: '0' }}>
+              {[25, 50, 75, 100].map(m => (
+                <span key={m} style={{ fontSize: '10px', color: '#cbd5e1' }}>{m}%</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Tres cifras clave */}
+          <div style={{ display: 'grid', gridTemplateColumns: mob ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '12px' }}>
+            <div style={{ textAlign: 'center', padding: '12px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+              <p style={{ fontSize: '10px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>💰 Cobros recibidos</p>
+              <p style={{ fontSize: '18px', fontWeight: 800, color: '#4F6EF7' }}>{bal(cobrosActual)}</p>
+            </div>
+            <div style={{ textAlign: 'center', padding: '12px', background: '#f0fdfa', borderRadius: '10px', border: '1px solid #99f6e4' }}>
+              <p style={{ fontSize: '10px', color: '#0d9488', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>🛒 Ventas del mes</p>
+              <p style={{ fontSize: '18px', fontWeight: 800, color: '#0d9488' }}>{bal(ventasActual)}</p>
+            </div>
+            <div style={{ textAlign: 'center', padding: '12px', background: `${colorMeta}0d`, borderRadius: '10px', border: `1px solid ${colorMeta}33` }}>
+              <p style={{ fontSize: '10px', color: colorMeta, fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>📊 Total recaudado</p>
+              <p style={{ fontSize: '18px', fontWeight: 800, color: colorMeta }}>{bal(ingresoTotalMes)}</p>
+            </div>
+            <div style={{ textAlign: 'center', padding: '12px', background: faltaMeta === 0 ? '#f0fdf4' : '#fef9f0', borderRadius: '10px', border: `1px solid ${faltaMeta === 0 ? '#bbf7d0' : '#fde68a'}` }}>
+              <p style={{ fontSize: '10px', color: faltaMeta === 0 ? '#16a34a' : '#b45309', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>
+                {faltaMeta === 0 ? '🏆 Superado' : '⏳ Faltan'}
+              </p>
+              <p style={{ fontSize: '18px', fontWeight: 800, color: faltaMeta === 0 ? '#16a34a' : '#b45309' }}>
+                {faltaMeta === 0 ? '+' + bal(ingresoTotalMes - mrrVal) : bal(faltaMeta)}
+              </p>
+            </div>
+          </div>
+
+          {/* Nota MRR */}
+          <p style={{ fontSize: '11px', color: '#94a3b8', marginTop: '14px', textAlign: 'center' }}>
+            Meta basada en MRR: <strong style={{ color: '#64748b' }}>{bal(mrrVal)}</strong> — suma de {mrr_stats.contratos_activos || 0} contratos activos normalizados a mensual
+          </p>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════
           BLOQUE 1 — INGRESOS DEL MES (el más importante arriba)
