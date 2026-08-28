@@ -32,6 +32,7 @@ router.get('/', async (req, res) => {
 
     const filtroCliente    = mkFiltro('creado_por');
     const filtroPago       = mkFiltro('registrado_por');
+    const filtroVenta      = mkFiltro('registrado_por');
     const filtroGPS        = mkFiltro('creado_por');
     const filtroTarea      = esSubAgente
       ? `AND creada_por = ${agenteId}`
@@ -53,7 +54,12 @@ router.get('/', async (req, res) => {
       tareasResult,
       gpsResult,
       simResult,
-      plataformaResult
+      plataformaResult,
+      ventasMesResult,
+      anualidadesResult,
+      mrrResult,
+      clientesNuevosResult,
+      ticketPromedioResult
     ] = await Promise.allSettled([
 
       // KPIs principales
@@ -176,6 +182,84 @@ router.get('/', async (req, res) => {
         WHERE estado != 'perdido' ${filtroGPS}
         GROUP BY plataforma
         ORDER BY cantidad DESC
+      `),
+
+      // ══ NUEVO: Ventas del mes actual vs mes anterior (tabla ventas_cobros) ══
+      db.query(`
+        SELECT
+          COALESCE(SUM(CASE
+            WHEN MONTH(fecha) = MONTH(CURDATE()) AND YEAR(fecha) = YEAR(CURDATE())
+            THEN total ELSE 0 END), 0) AS ventas_mes_actual,
+          COALESCE(SUM(CASE
+            WHEN MONTH(fecha) = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))
+              AND YEAR(fecha) = YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))
+            THEN total ELSE 0 END), 0) AS ventas_mes_anterior,
+          COUNT(CASE
+            WHEN MONTH(fecha) = MONTH(CURDATE()) AND YEAR(fecha) = YEAR(CURDATE())
+            THEN 1 END) AS cantidad_ventas_mes
+        FROM ventas_cobros
+        WHERE fecha >= DATE_SUB(CURDATE(), INTERVAL 2 MONTH) ${filtroVenta}
+      `),
+
+      // ══ NUEVO: Anualidades por cobrar este mes ══
+      db.query(`
+        SELECT
+          COUNT(*) AS cantidad_anualidades,
+          COALESCE(SUM(con.monto_total), 0) AS monto_anualidades,
+          COUNT(CASE WHEN DATEDIFF(con.fecha_proximo_pago, CURDATE()) < 0 THEN 1 END) AS anualidades_vencidas,
+          COUNT(CASE WHEN DATEDIFF(con.fecha_proximo_pago, CURDATE()) >= 0 THEN 1 END) AS anualidades_por_cobrar
+        FROM contratos con
+        INNER JOIN clientes c ON c.id = con.cliente_id
+        WHERE con.frecuencia = 'anual'
+          AND con.estado = 'activo'
+          AND MONTH(con.fecha_proximo_pago) = MONTH(CURDATE())
+          AND YEAR(con.fecha_proximo_pago) = YEAR(CURDATE())
+          ${filtroClienteJoin}
+      `),
+
+      // ══ NUEVO: MRR — Ingreso Mensual Recurrente proyectado de contratos activos ══
+      db.query(`
+        SELECT
+          COALESCE(SUM(
+            CASE
+              WHEN frecuencia = 'mensual'    THEN monto_total
+              WHEN frecuencia = 'trimestral' THEN monto_total / 3
+              WHEN frecuencia = 'semestral'  THEN monto_total / 6
+              WHEN frecuencia = 'anual'      THEN monto_total / 12
+              ELSE 0
+            END
+          ), 0) AS mrr,
+          COUNT(*) AS contratos_activos,
+          COUNT(CASE WHEN frecuencia = 'mensual'    THEN 1 END) AS contratos_mensuales,
+          COUNT(CASE WHEN frecuencia = 'trimestral' THEN 1 END) AS contratos_trimestrales,
+          COUNT(CASE WHEN frecuencia = 'semestral'  THEN 1 END) AS contratos_semestrales,
+          COUNT(CASE WHEN frecuencia = 'anual'      THEN 1 END) AS contratos_anuales
+        FROM contratos con
+        INNER JOIN clientes c ON c.id = con.cliente_id
+        WHERE con.estado = 'activo'
+          ${filtroClienteJoin}
+      `),
+
+      // ══ NUEVO: Nuevos clientes este mes ══
+      db.query(`
+        SELECT
+          COUNT(CASE WHEN MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE()) THEN 1 END) AS nuevos_mes_actual,
+          COUNT(CASE WHEN MONTH(created_at) = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) AND YEAR(created_at) = YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) THEN 1 END) AS nuevos_mes_anterior
+        FROM clientes
+        WHERE 1=1 ${filtroCliente}
+      `),
+
+      // ══ NUEVO: Ticket promedio (pagos del mes) ══
+      db.query(`
+        SELECT
+          COUNT(*) AS cantidad_pagos_mes,
+          COALESCE(AVG(monto), 0) AS ticket_promedio,
+          COALESCE(MAX(monto), 0) AS pago_max,
+          COALESCE(MIN(monto), 0) AS pago_min
+        FROM pagos
+        WHERE MONTH(fecha_pago) = MONTH(CURDATE())
+          AND YEAR(fecha_pago) = YEAR(CURDATE())
+          ${filtroPago}
       `)
     ]);
 
@@ -183,17 +267,22 @@ router.get('/', async (req, res) => {
     const ok = (r, idx = 0) => r.status === 'fulfilled' ? r.value[0][idx] : null;
     const okArr = (r) => r.status === 'fulfilled' ? r.value[0] : [];
 
-    const kpis = ok(kpisResult) || { clientes_activos: 0, clientes_morosos: 0, clientes_suspendidos: 0, clientes_cortados: 0, leads_nuevos: 0, leads_activos: 0, cobros_mes_actual: 0, cobros_mes_anterior: 0, dispositivos_disponibles: 0, dispositivos_perdidos: 0 };
-    const alertas_count = ok(alertasResult) || { proximos_vencer: 0, vencidos: 0 };
+    const kpis              = ok(kpisResult) || {};
+    const alertas_count     = ok(alertasResult) || { proximos_vencer: 0, vencidos: 0 };
     const ingresos_mensuales = okArr(ingresosResult);
-    const estados_clientes = okArr(estadosResult);
-    const ultimos_pagos = okArr(ultimosPagosResult);
-    const alertas_detalle = okArr(alertasDetalleResult);
-    const pareto_raw = okArr(paretoResult);
-    const tareas_stats = ok(tareasResult) || { pendientes: 0, vencidas: 0 };
-    const gps_stats = ok(gpsResult) || {};
-    const sim_stats = ok(simResult) || {};
+    const estados_clientes  = okArr(estadosResult);
+    const ultimos_pagos     = okArr(ultimosPagosResult);
+    const alertas_detalle   = okArr(alertasDetalleResult);
+    const pareto_raw        = okArr(paretoResult);
+    const tareas_stats      = ok(tareasResult) || { pendientes: 0, vencidas: 0 };
+    const gps_stats         = ok(gpsResult) || {};
+    const sim_stats         = ok(simResult) || {};
     const gps_por_plataforma = okArr(plataformaResult);
+    const ventas_stats      = ok(ventasMesResult) || { ventas_mes_actual: 0, ventas_mes_anterior: 0, cantidad_ventas_mes: 0 };
+    const anualidades_stats = ok(anualidadesResult) || { cantidad_anualidades: 0, monto_anualidades: 0, anualidades_vencidas: 0, anualidades_por_cobrar: 0 };
+    const mrr_stats         = ok(mrrResult) || { mrr: 0, contratos_activos: 0, contratos_mensuales: 0, contratos_anuales: 0 };
+    const clientes_nuevos   = ok(clientesNuevosResult) || { nuevos_mes_actual: 0, nuevos_mes_anterior: 0 };
+    const ticket_stats      = ok(ticketPromedioResult) || { cantidad_pagos_mes: 0, ticket_promedio: 0, pago_max: 0, pago_min: 0 };
 
     // Calcular Pareto 80/20
     const totalIngresos = pareto_raw.reduce((s, r) => s + parseFloat(r.total_pagado), 0);
@@ -207,8 +296,14 @@ router.get('/', async (req, res) => {
       return { ...r, total_pagado: parseFloat(r.total_pagado), acumulado, es_top20: es20 };
     });
 
+    // Calcular tasa de cobro del mes: cobrado / MRR proyectado
+    const cobros_mes = parseFloat(kpis.cobros_mes_actual || 0);
+    const mrr_val = parseFloat(mrr_stats.mrr || 0);
+    const tasa_cobro_mes = mrr_val > 0 ? Math.min(100, Math.round((cobros_mes / mrr_val) * 100)) : 0;
+
     res.json({
       success: true,
+      timestamp: new Date().toISOString(),
       data: {
         kpis,
         alertas_count,
@@ -222,7 +317,14 @@ router.get('/', async (req, res) => {
         tareas_stats,
         gps_stats,
         sim_stats,
-        gps_por_plataforma
+        gps_por_plataforma,
+        // ══ Nuevas métricas ══
+        ventas_stats,
+        anualidades_stats,
+        mrr_stats,
+        clientes_nuevos,
+        ticket_stats,
+        tasa_cobro_mes
       }
     });
   } catch (err) {
