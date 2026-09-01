@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import api from '../services/api';
 import AlertaBadge from '../components/AlertaBadge';
 import WhatsAppButton from '../components/WhatsAppButton';
+import Estrellas from '../components/Estrellas';
 
 const ESTADOS = ['activo', 'inactivo', 'moroso', 'suspendido', 'cortado'];
 
@@ -296,9 +297,13 @@ export default function ClienteDetalle() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <h1 style={{ fontSize: '22px', fontWeight: 700 }}>{cliente.nombre_razon_social}</h1>
             <AlertaBadge estado={cliente.estado} />
+            {cliente.estrellas > 0 && (
+              <Estrellas valor={cliente.estrellas} size="md" mostrarNumero={true} mostrarLabel={true} />
+            )}
           </div>
           <p style={{ color: 'var(--gris)', fontSize: '13px' }}>
             {cliente.tipo_cliente} · RUC: {cliente.ruc || 'N/A'} · {cliente.provincia || 'Sin provincia'}
+            {cliente.total_pagos > 0 && ` · ${cliente.total_pagos} pagos registrados`}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>

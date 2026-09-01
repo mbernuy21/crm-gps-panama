@@ -5,6 +5,7 @@ const db = require('../config/database');
 const { authMiddleware } = require('../middleware/auth');
 const auditoria = require('../services/auditoria');
 const { filtroRol } = require('../services/rolFiltro');
+const { calcularValoracion, calcularValoracionesLote } = require('../services/valoracion');
 
 router.use(authMiddleware);
 
@@ -47,7 +48,9 @@ router.get('/', async (req, res) => {
     const [clientes] = await db.query(`
       SELECT c.*,
         COUNT(DISTINCT d.id) AS total_dispositivos,
-        COUNT(DISTINCT con.id) AS total_contratos
+        COUNT(DISTINCT con.id) AS total_contratos,
+        MIN(con.fecha_proximo_pago) AS fecha_proximo_pago,
+        MIN(con.frecuencia) AS frecuencia_contrato
       FROM clientes c
       LEFT JOIN dispositivos d ON d.cliente_id = c.id AND d.estado = 'asignado'
       LEFT JOIN contratos con ON con.cliente_id = c.id AND con.estado = 'activo'
@@ -63,7 +66,24 @@ router.get('/', async (req, res) => {
       params
     );
 
-    res.json({ success: true, data: clientes, total, page: parseInt(page), limit: parseInt(limit) });
+    // Calcular valoraciones en lote para todos los clientes
+    let clientesConValoracion = clientes;
+    if (clientes.length > 0) {
+      const ids = clientes.map(c => c.id);
+      const { pagosPorCliente, contratoPorCliente } = await calcularValoracionesLote(db, ids);
+
+      clientesConValoracion = clientes.map(c => {
+        const pagos = pagosPorCliente[c.id] || [];
+        const contrato = contratoPorCliente[c.id] || (c.fecha_proximo_pago ? {
+          frecuencia: c.frecuencia_contrato,
+          fecha_proximo_pago: c.fecha_proximo_pago
+        } : null);
+        const val = calcularValoracion(c, pagos, contrato);
+        return { ...c, valoracion: val.estrellas, valoracion_score: val.score, valoracion_detalle: val.detalle };
+      });
+    }
+
+    res.json({ success: true, data: clientesConValoracion, total, page: parseInt(page), limit: parseInt(limit) });
   } catch (err) {
     console.error('Error listando clientes:', err);
     res.status(500).json({ success: false, message: 'Error obteniendo clientes' });
@@ -98,9 +118,14 @@ router.get('/:id', async (req, res) => {
     const [pagos] = pagosRes;
     const [facturas] = facturasRes;
 
+    // Calcular valoración con historial completo de pagos
+    const contratoActivo = contratos.find(c => c.estado === 'activo') || null;
+    const pagosAsc = [...pagos].sort((a, b) => new Date(a.fecha_pago) - new Date(b.fecha_pago));
+    const valoracionData = calcularValoracion(cliente, pagosAsc, contratoActivo);
+
     res.json({
       success: true,
-      data: { ...cliente, dispositivos, contratos, pagos, facturas }
+      data: { ...cliente, dispositivos, contratos, pagos, facturas, ...valoracionData }
     });
   } catch (err) {
     console.error('Error obteniendo cliente:', err);

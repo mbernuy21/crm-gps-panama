@@ -8,6 +8,7 @@ import WhatsAppButton from '../components/WhatsAppButton';
 import ModalConfirmar from '../components/ModalConfirmar';
 import ImportarGoogleSheets from '../components/ImportarGoogleSheets';
 import Paginacion from '../components/Paginacion';
+import Estrellas from '../components/Estrellas';
 
 const ITEMS_POR_PAGINA = 50;
 
@@ -194,7 +195,7 @@ export default function Clientes() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: '#f9fafb' }}>
-              {['Nombre / Razón Social', 'Teléfono / WhatsApp', 'Provincia', 'GPS', 'Estado', 'Acciones'].map(h => (
+              {['Nombre / Razón Social', 'Teléfono / WhatsApp', 'Provincia', 'GPS', 'Estado', 'Valoración', 'Acciones'].map(h => (
                 <th key={h} style={{ padding: '11px 14px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6b7280', borderBottom: '1px solid var(--borde)' }}>{h}</th>
               ))}
             </tr>
@@ -222,6 +223,13 @@ export default function Clientes() {
                   <span style={{ fontWeight: 600, color: 'var(--azul)' }}>{c.total_dispositivos}</span>
                 </td>
                 <td style={{ padding: '11px 14px' }}><AlertaBadge estado={c.estado} /></td>
+                <td style={{ padding: '11px 14px' }}>
+                  {c.valoracion ? (
+                    <Estrellas valor={c.valoracion} size="sm" mostrarNumero={true} mostrarLabel={false} />
+                  ) : (
+                    <span style={{ fontSize: '11px', color: '#9ca3af' }}>Sin pagos</span>
+                  )}
+                </td>
                 <td style={{ padding: '11px 14px' }}>
                   <div style={{ display: 'flex', gap: '6px' }}>
                     <button onClick={() => navigate(`/clientes/${c.id}`)}
