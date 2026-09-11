@@ -64,38 +64,45 @@ router.post('/webhook', express.json(), async (req, res) => {
   }
 });
 
-// ── Generar respuesta con Claude IA ──────────────────────────────────────────
+// ── Generar respuesta con Groq IA ────────────────────────────────────────────
 async function generarRespuestaIA(mensaje, nombre, telefono) {
-  const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+  const GROQ_KEY = process.env.GROQ_API_KEY;
 
-  if (!ANTHROPIC_KEY) {
+  if (!GROQ_KEY) {
     return `Hola ${nombre}, gracias por escribirnos a GPS Tracker Panamá 📡\nEn breve un asesor te atenderá.`;
   }
 
-  try {
-    const { default: Anthropic } = await import('@anthropic-ai/sdk');
-    const client = new Anthropic({ apiKey: ANTHROPIC_KEY });
-
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5',
-      max_tokens: 300,
-      system: `Eres el asistente virtual de GPS Tracker Panamá, empresa de venta,
+  const SYSTEM_PROMPT = `Eres el asistente virtual de GPS Tracker Panamá, empresa de venta,
 alquiler e instalación de rastreadores GPS en Panamá.
 Respondes por WhatsApp de forma amable, breve y profesional.
 Si el cliente pregunta precios, dile que un asesor le confirmará los detalles.
 Si quiere una cotización, pídele: cantidad de vehículos, tipo (carro/moto/camión) y zona en Panamá.
 Si tiene problema técnico con su GPS, pregunta el número IMEI y el síntoma.
 Siempre responde en español, máximo 3 párrafos cortos. Usa emojis con moderación.
-NUNCA inventes precios ni datos que no tengas.`,
-      messages: [
-        { role: 'user', content: `Cliente llamado ${nombre} dice: "${mensaje}"` }
-      ]
+NUNCA inventes precios ni datos que no tengas.`;
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        max_tokens: 300,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: `Cliente llamado ${nombre} dice: "${mensaje}"` }
+        ]
+      })
     });
 
-    return response.content[0].text;
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || `Hola ${nombre}, gracias por escribirnos 📡 Un asesor te atenderá pronto.`;
 
   } catch (err) {
-    console.error('Error Claude IA:', err.message);
+    console.error('Error Groq IA:', err.message);
     return `Hola ${nombre}, gracias por escribirnos 📡 Un asesor de GPS Tracker Panamá te atenderá pronto.`;
   }
 }
