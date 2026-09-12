@@ -64,11 +64,11 @@ router.post('/webhook', express.json(), async (req, res) => {
   }
 });
 
-// ── Generar respuesta con Groq IA ────────────────────────────────────────────
+// ── Generar respuesta con NVIDIA NIM (Kimi-k3) ───────────────────────────────
 async function generarRespuestaIA(mensaje, nombre, telefono) {
-  const GROQ_KEY = process.env.GROQ_API_KEY;
+  const NVIDIA_KEY = process.env.NVIDIA_API_KEY;
 
-  if (!GROQ_KEY) {
+  if (!NVIDIA_KEY) {
     return `Hola ${nombre}, gracias por escribirnos a GPS Tracker Panamá 📡\nEn breve un asesor te atenderá.`;
   }
 
@@ -82,15 +82,16 @@ Siempre responde en español, máximo 3 párrafos cortos. Usa emojis con moderac
 NUNCA inventes precios ni datos que no tengas.`;
 
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${GROQ_KEY}`,
+        'Authorization': `Bearer ${NVIDIA_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: 'moonshotai/kimi-k3',
         max_tokens: 300,
+        stream: false,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: `Cliente llamado ${nombre} dice: "${mensaje}"` }
@@ -99,10 +100,14 @@ NUNCA inventes precios ni datos que no tengas.`;
     });
 
     const data = await res.json();
+    if (!res.ok) {
+      console.error('Error NVIDIA NIM:', JSON.stringify(data));
+      return `Hola ${nombre}, gracias por escribirnos 📡 Un asesor te atenderá pronto.`;
+    }
     return data.choices?.[0]?.message?.content || `Hola ${nombre}, gracias por escribirnos 📡 Un asesor te atenderá pronto.`;
 
   } catch (err) {
-    console.error('Error Groq IA:', err.message);
+    console.error('Error NVIDIA IA:', err.message);
     return `Hola ${nombre}, gracias por escribirnos 📡 Un asesor de GPS Tracker Panamá te atenderá pronto.`;
   }
 }
