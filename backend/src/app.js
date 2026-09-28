@@ -75,6 +75,12 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: 'Error interno del servidor' });
 });
 
+// Migración automática: agregar 'tag' al ENUM tipo_producto en dispositivos
+const db = require('./config/database');
+db.query(`ALTER TABLE dispositivos MODIFY tipo_producto ENUM('fijo','portatil','tag') NOT NULL DEFAULT 'fijo'`)
+  .then(() => console.log('✅ Migración tipo_producto: tag agregado'))
+  .catch(err => console.log('ℹ️  Migración tipo_producto:', err.message));
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor CRM GPS corriendo en puerto ${PORT}`);
