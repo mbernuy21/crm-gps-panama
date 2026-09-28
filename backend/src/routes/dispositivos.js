@@ -91,7 +91,7 @@ router.post('/', async (req, res) => {
 
     // Validar SIM contra el inventario de SIMcards (si se proporcionó)
     const simLimpia = simcard && simcard.trim() !== '' ? simcard.trim() : null;
-    if (simLimpia) {
+    if (simLimpia && simLimpia !== 'sin_simcard_propia') {
       const [[simInv]] = await db.query('SELECT id, estado FROM simcards WHERE numero = ?', [simLimpia]);
       if (!simInv) {
         return res.status(400).json({
@@ -125,8 +125,8 @@ router.post('/', async (req, res) => {
     }
 
     const [[nuevo]] = await db.query('SELECT * FROM dispositivos WHERE id = ?', [result.insertId]);
-    // Si trae SIM, marcarla como asignada en el módulo de SIMcards (si existe ese registro)
-    if (simLimpia) {
+    // Si trae SIM real, marcarla como asignada en el módulo de SIMcards
+    if (simLimpia && simLimpia !== 'sin_simcard_propia') {
       await db.query(
         `UPDATE simcards SET estado='asignada', dispositivo_id=?, cliente_id=? WHERE numero=? AND estado!='asignada'`,
         [result.insertId, cliente_id || null, simLimpia]
@@ -154,7 +154,7 @@ router.put('/:id', async (req, res) => {
 
     // Validar SIM contra inventario al actualizar (solo si cambió respecto a la actual)
     const simLimpia = simcard && simcard.trim() !== '' ? simcard.trim() : null;
-    if (simLimpia && simLimpia !== actual.simcard) {
+    if (simLimpia && simLimpia !== 'sin_simcard_propia' && simLimpia !== actual.simcard) {
       const [[simInv]] = await db.query('SELECT id, estado, dispositivo_id FROM simcards WHERE numero = ?', [simLimpia]);
       if (!simInv) {
         return res.status(400).json({
@@ -189,10 +189,10 @@ router.put('/:id', async (req, res) => {
     }
 
     // Sincronizar SIM con módulo de SIMcards: liberar la anterior, asignar la nueva
-    if (actual.simcard && actual.simcard !== simLimpia) {
+    if (actual.simcard && actual.simcard !== simLimpia && actual.simcard !== 'sin_simcard_propia') {
       await db.query(`UPDATE simcards SET estado='disponible', dispositivo_id=NULL, cliente_id=NULL WHERE numero=?`, [actual.simcard]).catch(() => {});
     }
-    if (simLimpia) {
+    if (simLimpia && simLimpia !== 'sin_simcard_propia') {
       await db.query(`UPDATE simcards SET estado='asignada', dispositivo_id=?, cliente_id=? WHERE numero=?`, [id, cliente_id || null, simLimpia]).catch(() => {});
     }
     const [[actualizado]] = await db.query('SELECT * FROM dispositivos WHERE id = ?', [id]);
