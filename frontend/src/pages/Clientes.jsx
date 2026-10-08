@@ -104,6 +104,7 @@ export default function Clientes() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [clientes, setClientes] = useState([]);
+  const [total, setTotal] = useState(0);
   const [cargando, setCargando] = useState(true);
   const [modal, setModal] = useState(null);
   const [confirmar, setConfirmar] = useState({ visible: false, id: null, nombre: '' });
@@ -119,9 +120,11 @@ export default function Clientes() {
     if (filtros.buscar) params.append('buscar', filtros.buscar);
     if (filtros.frecuencia) params.append('frecuencia_contrato', filtros.frecuencia);
     if (filtros.modalidad_gps) params.append('modalidad_gps', filtros.modalidad_gps);
+    params.append('limit', '2000');
 
     api.get(`/clientes?${params}`).then(r => {
       setClientes(r.data.data);
+      setTotal(r.data.total || r.data.data.length);
       setCargando(false);
     }).catch(() => setCargando(false));
   }
@@ -258,7 +261,7 @@ export default function Clientes() {
           onChangeItems={n => setItemsPorPagina(n)}
         />
         <div style={{ padding: '6px 14px', borderTop: '1px solid var(--borde)', fontSize: '12px', color: 'var(--gris)' }}>
-          {clientes.length} cliente(s) encontrado(s)
+          {total} cliente(s) encontrado(s)
         </div>
       </div>
 

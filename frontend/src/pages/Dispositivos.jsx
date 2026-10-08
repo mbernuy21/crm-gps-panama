@@ -60,7 +60,8 @@ function ModalDispositivo({ dispositivo, clientes, simsDisponibles = [], onGuard
               </label>
               <select value={form.simcard || ''} onChange={e => setForm({ ...form, simcard: e.target.value })}
                 style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--borde)', borderRadius: '7px', fontSize: '13px' }}>
-                <option value="">— Sin SIM asignada —</option>
+                <option value="">— Sin SIM asignada aún —</option>
+                <option value="sin_simcard_propia">📱 Sin SIM mía (chip propio del cliente / GPS Tag)</option>
                 {opcionesSim.map(s => (
                   <option key={s.numero} value={s.numero}>
                     {s.numero}{s.operador ? ` · ${s.operador}` : ''}
@@ -86,6 +87,7 @@ function ModalDispositivo({ dispositivo, clientes, simsDisponibles = [], onGuard
                 style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--borde)', borderRadius: '7px', fontSize: '13px' }}>
                 <option value="fijo">Fijo</option>
                 <option value="portatil">Portátil</option>
+                <option value="tag">🏷️ GPS Tag</option>
               </select>
             </div>
             <div>
@@ -169,12 +171,15 @@ export default function Dispositivos() {
 
   // Filtro combinado tipo+modalidad
   const COMBOS = [
-    { value: '', label: 'Todos los GPS' },
+    { value: '', label: 'Todos los dispositivos' },
     { value: 'fijo|alquiler', label: 'GPS Fijo en Alquiler' },
     { value: 'fijo|venta', label: 'GPS Fijo en Venta' },
     { value: 'portatil|', label: 'GPS Portátil (todos)' },
     { value: 'portatil|alquiler', label: 'GPS Portátil en Alquiler' },
     { value: 'portatil|venta', label: 'GPS Portátil en Venta' },
+    { value: 'tag|', label: '🏷️ GPS Tags (todos)' },
+    { value: 'tag|alquiler', label: '🏷️ GPS Tag en Alquiler' },
+    { value: 'tag|venta', label: '🏷️ GPS Tag en Venta' },
   ];
 
   function cargar() {
@@ -258,12 +263,22 @@ export default function Dispositivos() {
             ) : dispositivos.slice((pagina - 1) * itemsPorPagina, pagina * itemsPorPagina).map((d, i) => (
               <tr key={d.id} style={{ background: i % 2 === 0 ? 'white' : '#fafafa' }}>
                 <td style={{ padding: '10px 14px', fontSize: '13px', fontWeight: 500 }}>{d.serial_gps}</td>
-                <td style={{ padding: '10px 14px', fontSize: '12px' }}>{d.simcard || '—'}</td>
+                <td style={{ padding: '10px 14px', fontSize: '12px' }}>
+                  {d.simcard === 'sin_simcard_propia'
+                    ? <span style={{ background: '#f3f4f6', color: '#6b7280', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 600 }}>📱 Chip propio</span>
+                    : d.simcard || '—'}
+                </td>
                 <td style={{ padding: '10px 14px', fontSize: '12px' }}>
                   <div>{d.placa_vehiculo || '—'}</div>
                   <div style={{ color: 'var(--gris)', fontSize: '11px' }}>{d.modelo_auto || ''}</div>
                 </td>
-                <td style={{ padding: '10px 14px', fontSize: '12px' }}>{d.tipo_producto}</td>
+                <td style={{ padding: '10px 14px', fontSize: '12px' }}>
+                  {d.tipo_producto === 'tag'
+                    ? <span style={{ background: '#ede9fe', color: '#6d28d9', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 600 }}>🏷️ Tag</span>
+                    : d.tipo_producto === 'portatil'
+                      ? 'Portátil'
+                      : 'Fijo'}
+                </td>
                 <td style={{ padding: '10px 14px', fontSize: '12px' }}>
                   {d.plataforma ? (
                     <span style={{

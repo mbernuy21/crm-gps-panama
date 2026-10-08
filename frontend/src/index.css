@@ -178,39 +178,107 @@ body.dark input:focus, body.dark select:focus, body.dark textarea:focus {
 }
 
 /* ============================================================
-   RESPONSIVE MÓVIL — mejoras de navegación en celular
+   RESPONSIVE MÓVIL — UX optimizado para celular
    ============================================================ */
+
+/* Wrapper para tablas con scroll táctil */
+.tabla-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radio);
+}
+
+/* Cards móvil: vista alternativa a tablas en pantallas chicas */
+.mobile-cards { display: none; }
+
 @media (max-width: 767px) {
-  /* Tablas: scroll horizontal en vez de romper el layout */
+
+  /* ── Tipografía ── */
+  h1 { font-size: 18px !important; }
+  h2 { font-size: 15px !important; }
+
+  /* ── Evitar zoom de iOS al enfocar inputs ── */
+  input, select, textarea { font-size: 16px !important; }
+
+  /* ── Botones táctiles (mínimo 44px recomendado por Apple/Google) ── */
+  button { min-height: 44px !important; }
+  button[style*="padding"] { padding-top: 10px !important; padding-bottom: 10px !important; }
+
+  /* ── Tablas: scroll horizontal fluido ── */
   table {
     display: block;
     overflow-x: auto;
     white-space: nowrap;
     -webkit-overflow-scrolling: touch;
+    font-size: 13px;
   }
-
-  /* Títulos un poco más pequeños */
-  h1 { font-size: 19px !important; }
-
-  /* Reducir padding de celdas para que quepa más */
   th, td { padding: 8px 10px !important; }
 
-  /* Modales ocupan casi todo el ancho */
-  [style*="maxWidth: '440px'"],
-  [style*="max-width: 440px"],
-  [style*="maxWidth: '520px'"],
-  [style*="max-width: 520px"],
-  [style*="maxWidth: '540px'"],
-  [style*="max-width: 540px"],
-  [style*="maxWidth: '560px'"],
-  [style*="max-width: 560px"] { max-width: 100% !important; }
+  /* ── Cards móvil visibles, tabla oculta ── */
+  .mobile-cards { display: block; }
+  .desktop-table { display: none !important; }
 
-  /* Botones más cómodos para el dedo (mínimo táctil ~44px) */
-  button { min-height: 40px; }
+  /* ── Grids: una columna en móvil ── */
+  [style*="grid-template-columns: 1fr 1fr 1fr 1fr"],
+  [style*="gridTemplateColumns: '1fr 1fr 1fr 1fr'"],
+  [style*="gridTemplateColumns: \"1fr 1fr 1fr 1fr\""] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  [style*="grid-template-columns: 1fr 1fr 1fr"],
+  [style*="gridTemplateColumns: '1fr 1fr 1fr'"],
+  [style*="gridTemplateColumns: \"1fr 1fr 1fr\""] {
+    grid-template-columns: 1fr 1fr !important;
+  }
 
-  /* Evitar que iOS haga zoom al enfocar inputs (necesita >=16px) */
-  input, select, textarea { font-size: 16px !important; }
+  /* ── Modales: ancho casi completo, scroll interno ── */
+  /* Overlay del modal */
+  div[style*="position: fixed"][style*="inset"] {
+    padding: 12px !important;
+    align-items: flex-end !important; /* aparece desde abajo en móvil = más natural */
+  }
+  /* Contenido del modal */
+  div[style*="position: fixed"][style*="inset"] > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: unset !important;
+    border-radius: 16px 16px 0 0 !important;
+    max-height: 92vh !important;
+    overflow-y: auto !important;
+    padding: 20px 16px !important;
+  }
+  /* Modal con borderRadius ya definido (los de confirmación) */
+  div[style*="position: fixed"][style*="inset"] > div[style*="border-radius: '12px'"],
+  div[style*="position: fixed"][style*="inset"] > div[style*="borderRadius: 12px"] {
+    border-radius: 16px 16px 0 0 !important;
+  }
+
+  /* ── Filtros/barra de búsqueda: columna en móvil ── */
+  div[style*="display: flex"][style*="gap"] > input[style*="flex: 1"] {
+    width: 100%;
+  }
+
+  /* ── KPI cards del dashboard: 2 por fila ── */
+  .kpi-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* ── Ocultar columnas secundarias en tablas ── */
+  .col-secondary { display: none !important; }
+
+  /* ── Acciones de tabla: iconos más grandes ── */
+  td button, td a {
+    min-width: 36px;
+    min-height: 36px;
+  }
 }
 
-/* Hacer que cualquier contenedor de tabla permita scroll táctil */
-.tabla-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+/* Pantallas muy chicas (iPhone SE, etc.) */
+@media (max-width: 380px) {
+  [style*="grid-template-columns: 1fr 1fr 1fr 1fr"],
+  [style*="gridTemplateColumns: '1fr 1fr 1fr 1fr'"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .kpi-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

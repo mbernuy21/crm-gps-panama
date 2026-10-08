@@ -225,7 +225,7 @@ export default function Dashboard() {
 
   const {
     kpis, alertas_count, ingresos_mensuales, estados_clientes,
-    ultimos_pagos, alertas_detalle, pareto, pareto_corte, total_ingresos,
+    ultimos_pagos, alertas_detalle, total_ingresos,
     tareas_stats, gps_stats = {}, sim_stats = {}, gps_por_plataforma = [],
     ventas_stats = {}, anualidades_stats = {}, mrr_stats = {},
     clientes_nuevos = {}, ticket_stats = {}, tasa_cobro_mes = 0
@@ -247,13 +247,6 @@ export default function Dashboard() {
   const donutData = {
     labels: estados_clientes.map(e => e.estado),
     datasets: [{ data: estados_clientes.map(e => e.cantidad), backgroundColor: estados_clientes.map(e => coloresEstado[e.estado] || '#9ca3af'), borderWidth: 2, borderColor: 'white' }]
-  };
-
-  // Datos pareto
-  const topClientes = (pareto || []).slice(0, 10);
-  const paretoData = {
-    labels: topClientes.map(c => (c.nombre_razon_social || '').length > 18 ? c.nombre_razon_social.slice(0, 18) + '…' : c.nombre_razon_social),
-    datasets: [{ label: 'Pagado (B/.)', data: topClientes.map(c => parseFloat(c.total_pagado)), backgroundColor: topClientes.map(c => c.es_top20 ? '#4F6EF7' : '#c7d2fe'), borderRadius: 5 }]
   };
 
   const totalAlertasDia = (alertas_count.proximos_vencer || 0) + (alertas_count.vencidos || 0);
@@ -536,44 +529,31 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Pareto + Resumen financiero */}
-      <div style={{ display: 'grid', gridTemplateColumns: colGraficas, gap: '20px', marginBottom: '24px' }}>
-        <div style={{ background: 'white', borderRadius: 'var(--radio)', padding: '20px', boxShadow: 'var(--sombra)' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '4px', color: '#374151' }}>Top 10 clientes por ingresos (Pareto 80/20)</h3>
-          <p style={{ fontSize: '11px', color: 'var(--gris)', marginBottom: '14px' }}>
-            En azul: los clientes que generan el 80% de tus ingresos {pareto_corte ? `(${pareto_corte} clientes)` : ''}
-          </p>
-          {topClientes.length === 0 ? (
-            <p style={{ color: 'var(--gris)', fontSize: '13px', textAlign: 'center', padding: '20px' }}>Sin datos de pagos aún</p>
-          ) : (
-            <Bar data={paretoData} options={{ indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { callback: v => 'B/.' + v } } } }} />
-          )}
-        </div>
-
-        {/* Anualidades detalle */}
+      {/* Anualidades — tarjeta completa sin Pareto */}
+      <div style={{ marginBottom: '24px' }}>
         <div style={{ background: 'white', borderRadius: 'var(--radio)', padding: '20px', boxShadow: 'var(--sombra)' }}>
           <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '16px', color: '#374151' }}>📅 Anualidades — {new Date().toLocaleString('es-PA', { month: 'long', year: 'numeric' })}</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div style={{ textAlign: 'center', padding: '14px', background: '#f0fdf4', borderRadius: '10px', border: '1px solid #bbf7d0' }}>
-                <p style={{ fontSize: '10px', color: '#16a34a', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>Por cobrar</p>
-                <p style={{ fontSize: '24px', fontWeight: 800, color: '#16a34a' }}>{anualidades_stats.anualidades_por_cobrar || 0}</p>
-              </div>
-              <div style={{ textAlign: 'center', padding: '14px', background: anualidades_stats.anualidades_vencidas > 0 ? '#fef2f2' : '#f8fafc', borderRadius: '10px', border: anualidades_stats.anualidades_vencidas > 0 ? '1px solid #fecaca' : '1px solid #e5e7eb' }}>
-                <p style={{ fontSize: '10px', color: anualidades_stats.anualidades_vencidas > 0 ? '#dc2626' : '#9ca3af', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>Vencidas</p>
-                <p style={{ fontSize: '24px', fontWeight: 800, color: anualidades_stats.anualidades_vencidas > 0 ? '#dc2626' : '#9ca3af' }}>{anualidades_stats.anualidades_vencidas || 0}</p>
-              </div>
+          <div style={{ display: 'grid', gridTemplateColumns: mob ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '14px', alignItems: 'center' }}>
+            <div style={{ textAlign: 'center', padding: '18px', background: '#f0fdf4', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+              <p style={{ fontSize: '11px', color: '#16a34a', fontWeight: 700, textTransform: 'uppercase', marginBottom: '6px' }}>Por cobrar este mes</p>
+              <p style={{ fontSize: '32px', fontWeight: 800, color: '#16a34a' }}>{anualidades_stats.anualidades_por_cobrar || 0}</p>
             </div>
-            <div style={{ padding: '14px', background: '#f0f9ff', borderRadius: '10px', border: '1px solid #bae6fd', textAlign: 'center' }}>
-              <p style={{ fontSize: '11px', color: '#0369a1', fontWeight: 600, marginBottom: '4px' }}>MONTO TOTAL DEL MES</p>
-              <p style={{ fontSize: '22px', fontWeight: 800, color: '#0369a1' }}>{bal(anualidades_stats.monto_anualidades)}</p>
+            <div style={{ textAlign: 'center', padding: '18px', background: anualidades_stats.anualidades_vencidas > 0 ? '#fef2f2' : '#f8fafc', borderRadius: '12px', border: anualidades_stats.anualidades_vencidas > 0 ? '1px solid #fecaca' : '1px solid #e5e7eb' }}>
+              <p style={{ fontSize: '11px', color: anualidades_stats.anualidades_vencidas > 0 ? '#dc2626' : '#9ca3af', fontWeight: 700, textTransform: 'uppercase', marginBottom: '6px' }}>Vencidas sin pagar</p>
+              <p style={{ fontSize: '32px', fontWeight: 800, color: anualidades_stats.anualidades_vencidas > 0 ? '#dc2626' : '#9ca3af' }}>{anualidades_stats.anualidades_vencidas || 0}</p>
             </div>
-            <div style={{ fontSize: '12px', color: '#6b7280', textAlign: 'center' }}>
-              Total contratos anuales activos: <strong>{anualidades_stats.cantidad_anualidades || 0}</strong>
+            <div style={{ textAlign: 'center', padding: '18px', background: '#f0f9ff', borderRadius: '12px', border: '1px solid #bae6fd' }}>
+              <p style={{ fontSize: '11px', color: '#0369a1', fontWeight: 700, textTransform: 'uppercase', marginBottom: '6px' }}>Monto total del mes</p>
+              <p style={{ fontSize: '24px', fontWeight: 800, color: '#0369a1' }}>{bal(anualidades_stats.monto_anualidades)}</p>
             </div>
-            <button onClick={() => navigate('/contratos')} style={{ background: 'var(--azul)', color: 'white', border: 'none', borderRadius: '8px', padding: '10px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
-              Ver contratos →
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '10px' }}>
+              <p style={{ fontSize: '12px', color: '#6b7280', textAlign: 'center' }}>
+                <strong>{anualidades_stats.cantidad_anualidades || 0}</strong> contratos anuales activos
+              </p>
+              <button onClick={() => navigate('/contratos')} style={{ background: 'var(--azul)', color: 'white', border: 'none', borderRadius: '8px', padding: '10px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
+                Ver contratos →
+              </button>
+            </div>
           </div>
         </div>
       </div>

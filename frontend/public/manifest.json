@@ -1,0 +1,44 @@
+{
+  "short_name": "GPS CRM",
+  "name": "GPS Tracker Panamá — CRM",
+  "description": "Sistema de gestión de clientes y dispositivos GPS",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#4F6EF7",
+  "theme_color": "#4F6EF7",
+  "lang": "es",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "url": "/dashboard",
+      "description": "Ver panel principal"
+    },
+    {
+      "name": "Clientes",
+      "url": "/clientes",
+      "description": "Gestión de clientes"
+    },
+    {
+      "name": "Pagos",
+      "url": "/pagos",
+      "description": "Registrar pagos"
+    }
+  ]
+}
